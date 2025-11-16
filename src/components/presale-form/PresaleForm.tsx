@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import axios from "axios";
-import { BrowserProvider, Contract, Interface, JsonRpcProvider, formatUnits, parseEther, parseUnits } from "ethers";
+import { BrowserProvider, Contract, JsonRpcProvider, formatUnits, parseEther, parseUnits } from "ethers";
 
 import CurrencyInput from "./CurrencyInput";
 import CurrencyRadio from "./CurrencyRadio";
@@ -83,7 +83,7 @@ const ERC20_ABI = ["function approve(address spender, uint256 amount) external r
 
 const PresaleForm = () => {
   const [loading, setLoading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState('pending');
+  // const [verificationStatus, setVerificationStatus] = useState('pending');
   const [selectedCurrency, setSelectedCurrency] = useState('ETH');
   const [amountInput, setAmountInput] = useState("");
   const [userBalance, setUserBalance] = useState("0");
@@ -163,7 +163,7 @@ const PresaleForm = () => {
 
       if (response.data.verified === true) {
         setIsVerified(true);
-        setVerificationStatus('verified');
+        // setVerificationStatus('verified');
         localStorage.setItem('presale_verified', 'true'); // Persist
       }
     } catch (err: any) {
@@ -472,7 +472,7 @@ const PresaleForm = () => {
             }}
             onVerified={() => {
               setIsVerified(true);
-              setVerificationStatus('verified');
+              // setVerificationStatus('verified');
               localStorage.setItem('presale_verified', 'true');
               setShowVerificationScreen(false);
             }}
