@@ -21,7 +21,7 @@ import USDCLogo from "../../assets/img/currencies/USDC.png";
 import USDTLogo from "../../assets/img/currencies/USDT.png";
 
 const DEFAULT_RPC_URL = import.meta.env.VITE_RPC_URL || "https://ethereum.publicnode.com";
-const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 1);
+const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
 const PRICE_DECIMALS = 8;
 const NATIVE_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -95,19 +95,24 @@ const PresaleForm = () => {
   const [canClaim, setCanClaim] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [tokenUsdPrice, setTokenUsdPrice] = useState("0.015");
-  const [showCountryModal, setShowCountryModal] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<'US' | 'Other'>('Other');
+  // const [showCountryModal, setShowCountryModal] = useState(false);
+  // const [selectedCountry, setSelectedCountry] = useState<'US' | 'Other'>('Other');
   const [tokenAmount, setTokenAmount] = useState<number>(0);
   const [showVerificationScreen, setShowVerificationScreen] = useState(false);
   const [isVerified, setIsVerified] = useState(false)
 
-  
+
 
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
 
   const PRESALE_CONTRACT_ADDRESS = import.meta.env.VITE_PRESALE_CONTRACT_ADDRESS || "0x...PRESALE_CONTRACT_ADDRESS";
   const amount = amountInput ? Number(amountInput) : 0;
+
+  const remainingTokens = useMemo(() => {
+    return Math.max(totalPresaleSupply - tokensSold, 0);
+  }, [totalPresaleSupply, tokensSold]);
+  
 
   const currencyDataList = useMemo<Currency[]>(() =>
     BASE_CURRENCIES.map((base) => {
@@ -275,13 +280,12 @@ const PresaleForm = () => {
     localStorage.setItem('presale_verified', String(isVerified));
   }, [isVerified]);
 
-  const startVerification = async (countryCode: 'US' | 'Other') => {
+  const startVerification = async () => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL || 'https://dynastical-xzavier-unsanguinarily.ngrok-free.dev'}/api/verify/start`, {
         userId: address,
         email: "user@example.com",
         phone: "+1234567890",
-        country: countryCode === 'US' ? 'US' : 'Other',
       });
       setShowVerificationScreen(true);
     } catch (err: any) {
@@ -289,20 +293,25 @@ const PresaleForm = () => {
     }
   };
 
-  const handleVerifyClick = () => {
+  const handleVerifyClick = async () => {
     if (!isConnected) return alert("Please connect wallet");
-    setShowCountryModal(true);
-  };
+    await startVerification();
+  };  
 
-  const handleCountryConfirm = async () => {
-    setShowCountryModal(false);
-    await startVerification(selectedCountry === 'US' ? 'US' : 'Other');
-  };
+  // const handleCountryConfirm = async () => {
+  //   setShowCountryModal(false);
+  //   await startVerification();
+  // };
 
   const handleBuyTokens = async () => {
     if (!isConnected || !address) return alert("Please connect your wallet first");
     if (!amount || amount <= 0) return alert("Please enter a valid amount to purchase");
     if (!isVerified) return alert("Please complete verification first");
+
+    // 🚫 NEW: Prevent purchase beyond remaining supply
+    if (tokenAmount > remainingTokens) {
+      return alert("You have exceeded the maximum number of tokens allowed for purchase.");
+    }  
   
     console.log("💰 Purchase Request:", { amount, selectedCurrency, address });
   
@@ -461,7 +470,7 @@ const PresaleForm = () => {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <VerificationScreen
             userId={address ?? ""}
-            countryCode={selectedCountry}
+            // countryCode={selectedCountry}
             onClose={() => {
               setShowVerificationScreen(false);
               if (address) {
@@ -514,12 +523,25 @@ const PresaleForm = () => {
         )}
 
         {isVerified && (
-          <button type="button" disabled={!isConnected || loading || !selectedCurrencyData.isActive} onClick={() => !isConnected || loading ? null : handleBuyTokens()} className={`w-full py-3 md:py-4 mt-3 font-medium border text-sm md:text-base tracking-tight rounded-full duration-200 ${!isConnected ? 'border-body-text text-body-text cursor-not-allowed opacity-50' : !selectedCurrencyData.isActive ? 'border-body-text text-body-text cursor-not-allowed opacity-60' : loading ? 'border-green-500 text-green-500 cursor-wait opacity-70' : 'border-green-500 text-green-500 hover:bg-green-500 hover:text-black cursor-pointer'}`}>
-            {!isConnected ? "Connect wallet" : !selectedCurrencyData.isActive ? `${selectedCurrencyData.symbol} unavailable` : amount <= 0 ? "Enter amount to Buy" : loading ? `Processing...` : `Buy with ${selectedCurrencyData.symbol}`}
+          <button type="button" disabled={!isConnected || loading || !selectedCurrencyData.isActive || tokenAmount > remainingTokens} onClick={() => !isConnected || loading ? null : handleBuyTokens()} className={`w-full py-3 md:py-4 mt-3 font-medium border text-sm md:text-base tracking-tight rounded-full duration-200
+          disabled:cursor-not-allowed
+          ${tokenAmount > remainingTokens
+            ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-black cursor-pointer' 
+            :!isConnected
+            ? 'border-body-text text-body-text'
+            : !selectedCurrencyData.isActive
+            ? 'border-body-text text-body-text'
+            : loading
+            ? 'border-green-500 text-green-500 cursor-wait opacity-70'
+            : 'border-green-500 text-green-500 hover:bg-green-500 hover:text-black cursor-pointer'
+            }`}>
+            {!isConnected ? "Connect wallet" : !selectedCurrencyData.isActive ? `${selectedCurrencyData.symbol} unavailable` : amount <= 0 ? "Enter amount to Buy" : tokenAmount > remainingTokens
+            ? "You have exceeded the maximum number of tokens allowed for purchase"
+            : loading ? "Processing..." : `Buy with ${selectedCurrencyData.symbol}`}
           </button>
         )}
 
-        {showCountryModal && (
+        {/* {showCountryModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
             <div className="bg-white text-black w-[90%] max-w-sm rounded-lg p-4 shadow-xl">
               <h3 className="text-lg font-semibold mb-3">Select your country</h3>
@@ -533,7 +555,7 @@ const PresaleForm = () => {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {isVerified && <TermsCheckbox />}
         <img id="bg-form" src="/img/form-bg.jpg" className="absolute opacity-15 w-full h-full inset-0 -z-50" alt="" />

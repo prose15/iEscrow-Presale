@@ -63,6 +63,13 @@ input[type="number"]:focus {
   mask-image: linear-gradient(20deg, #1010103f 0%, transparent 40%, transparent 60%, #10101059 100%);
 }
 
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
 @keyframes rotateClockwise {
   from {
     transform: rotate(0deg);
