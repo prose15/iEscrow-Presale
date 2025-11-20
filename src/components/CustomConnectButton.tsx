@@ -49,7 +49,7 @@ const CustomConnectButton = () => {
               if (!connected) {
                 return (
                   <button 
-                    className='px-2 md:px-4 py-[2px] md:py-1 font-poppins tracking-tighter text-bg-logo text-sm border-[1px] border-bg-logo hover:bg-bg-logo hover:border-bg-logo hover:text-black duration-200 rounded-l-full rounded-r-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' 
+                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' 
                     onClick={handleConnect} 
                     disabled={isConnecting}
                     type="button">
@@ -58,10 +58,19 @@ const CustomConnectButton = () => {
                 );
               }
 
-              if (chain.unsupported) {
+              // Allow ONLY Ethereum Mainnet
+              const allowedChain = 1;
+
+              if (connected && chain?.id !== allowedChain) {
                 return (
-                  <button onClick={openChainModal} type="button">
-                    Wrong network
+                  <button
+                    onClick={openChainModal}
+                    type="button"
+                    className="px-3 py-2 font-poppins text-sm border border-red-500 text-red-500
+                              rounded-full bg-transparent hover:bg-red-500 hover:text-black 
+                              duration-200 cursor-pointer"
+                  >
+                    Wrong Network — Switch to Ethereum Mainnet
                   </button>
                 );
               }
@@ -72,7 +81,7 @@ const CustomConnectButton = () => {
                     onClick={openChainModal}
                     style={{ display: 'flex', alignItems: 'center' }}
                     type="button"
-                    className='px-2 md:px-4 py-[2px] md:py-1 font-poppins tracking-tighter text-bg-logo text-sm border-[1px] border-bg-logo hover:bg-bg-logo hover:border-bg-logo hover:text-black duration-200 rounded-l-full rounded-r-full cursor-pointer'
+                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
                   >
                     {chain.hasIcon && (
                       <div
@@ -100,7 +109,7 @@ const CustomConnectButton = () => {
                   <button 
                     onClick={openAccountModal} 
                     type="button"
-                    className='px-2 md:px-4 py-[2px] md:py-1 font-poppins tracking-tighter text-bg-logo text-sm border-[1px] border-bg-logo hover:bg-bg-logo hover:border-bg-logo hover:text-black duration-200 rounded-l-full rounded-r-full cursor-pointer'
+                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
                   >
                     {account.displayName}
                     {account.displayBalance

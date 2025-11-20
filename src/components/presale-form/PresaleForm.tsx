@@ -517,10 +517,29 @@ const PresaleForm = () => {
         <TokenBalance balance={escrowBalance} loading={refreshingEscrow} onRefresh={refreshEscrowBalance} canClaim={canClaim} claiming={claiming} onClaim={handleClaimTokens} />
 
         {isConnected && !isVerified && (
-          <button type="button" onClick={handleVerifyClick} disabled={loading} className={`w-full py-3 md:py-4 mt-4 font-medium border text-sm md:text-base tracking-tight rounded-full duration-200 ${loading ? 'border-bg-logo text-bg-logo cursor-wait opacity-70' : 'border-bg-logo text-bg-logo hover:text-black hover:border-bg-logo hover:bg-bg-logo cursor-pointer'}`}>
-            {loading ? "Launching verification..." : "Verify to enable purchases"}
+          <button
+            type="button"
+            onClick={tokenAmount > remainingTokens ? undefined : handleVerifyClick}
+            disabled={loading || tokenAmount > remainingTokens}
+            className={`w-full py-3 md:py-4 mt-4 font-medium border text-sm md:text-base tracking-tight rounded-full duration-200
+              ${
+                tokenAmount > remainingTokens
+                  ? 'border-red-600 text-red-600 opacity-60 cursor-not-allowed'
+                  : loading
+                  ? 'border-bg-logo text-bg-logo cursor-wait opacity-70'
+                  : 'border-bg-logo text-bg-logo hover:text-black hover:border-bg-logo hover:bg-bg-logo cursor-pointer'
+              }
+            `}
+          >
+            {tokenAmount > remainingTokens
+              ? "You have exceeded the max tokens available"
+              : loading
+              ? "Launching verification..."
+              : "Verify to enable purchases"}
           </button>
         )}
+
+
 
         {isVerified && (
           <button type="button" disabled={!isConnected || loading || !selectedCurrencyData.isActive || tokenAmount > remainingTokens} onClick={() => !isConnected || loading ? null : handleBuyTokens()} className={`w-full py-3 md:py-4 mt-3 font-medium border text-sm md:text-base tracking-tight rounded-full duration-200
