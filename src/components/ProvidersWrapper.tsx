@@ -13,7 +13,7 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { WagmiProvider } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { mainnet } from "wagmi/chains";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +30,7 @@ const projectId =
 const config = getDefaultConfig({
   appName: "Escrow Presale",
   projectId,
-  chains: [mainnet, sepolia],
+  chains: [mainnet],
   ssr: false,
 
   // ⭐ CUSTOM WALLET LIST — Rainbow Wallet REMOVED
