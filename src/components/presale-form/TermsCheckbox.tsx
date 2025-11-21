@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 
-const TermsCheckbox = () => {
-  const [isChecked, setIsChecked] = useState<boolean>(false);
+type TermsCheckboxProps = {
+  isChecked: boolean;
+  setIsChecked: (value: boolean) => void;
+};
+
+const TermsCheckbox = ({ isChecked, setIsChecked }: TermsCheckboxProps) => {
+  // const [isChecked, setIsChecked] = useState<boolean>(false);
 
   // Cargar estado desde localStorage al montar
   useEffect(() => {
