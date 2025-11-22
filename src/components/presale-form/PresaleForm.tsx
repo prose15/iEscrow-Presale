@@ -283,9 +283,15 @@ const PresaleForm = () => {
   }, [isConnected, address, isVerified, selectedCurrencyData, refreshEscrowBalance, fetchUserBalance]);
 
   // Persist to localStorage
+  // useEffect(() => {
+  //   localStorage.setItem('presale_verified', String(isVerified));
+  // }, [isVerified]);
   useEffect(() => {
-    localStorage.setItem('presale_verified', String(isVerified));
-  }, [isVerified]);
+    const savedState = localStorage.getItem('presale_verified');
+    if (savedState) {
+      setIsVerified(JSON.parse(savedState));
+    }
+  }, []);
 
   const startVerification = async () => {
     try {
@@ -567,7 +573,7 @@ const PresaleForm = () => {
       disabled:cursor-not-allowed
       ${
         !isChecked
-          ? 'border-red-500 text-red-500 opacity-60'
+          ? 'border-green-500 text-green-500 opacity-60'
           : tokenAmount > remainingTokens
           ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-black'
           : !isConnected
@@ -578,7 +584,7 @@ const PresaleForm = () => {
       }`}
   >
     {!isChecked
-      ? "Agree to Terms First"
+      ? `Buy with ${selectedCurrencyData.symbol}`
       : !isConnected
       ? "Connect wallet"
       : amount <= 0
