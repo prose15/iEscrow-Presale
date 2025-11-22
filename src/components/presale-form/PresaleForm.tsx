@@ -165,7 +165,7 @@ const PresaleForm = () => {
     if (!userId || isVerified) return; // Skip if already verified
 
     try {
-      const url = `${import.meta.env.VITE_API_URL1 || 'https://dynastical-xzavier-unsanguinarily.ngrok-free.dev'}/api/verify/status/${userId}`;
+      const url = `${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com'}/api/verify/status/${userId}`;
       const response = await axios.get(url);
 
       if (response.data.verified === true) {
@@ -184,15 +184,20 @@ const PresaleForm = () => {
       if (currency.isNative) {
         const balanceWei = await provider.getBalance(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6));
+        console.log(balanceWei,"balanceWei")
+        console.log(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6),"balanceWei")
       } else {
         const code = await provider.getCode(currency.address);
         if (!code || code === "0x") { setUserBalance("0.000000"); return; }
         const tokenContract = new Contract(currency.address, ERC20_ABI, provider);
         const balanceRaw = await tokenContract.balanceOf(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6));
+        console.log(balanceRaw,"balanceRaw")
+        console.log(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6),"balanceRaw")
       }
     } catch (err) {
       setUserBalance("0.000000");
+      console.log("Error fetching user balance:", err);
     }
   }, []);
 
@@ -284,7 +289,7 @@ const PresaleForm = () => {
 
   const startVerification = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL || 'https://dynastical-xzavier-unsanguinarily.ngrok-free.dev'}/api/verify/start`, {
+      await axios.post(`${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com/'}/api/verify/start`, {
         userId: address,
         email: "user@example.com",
         phone: "+1234567890",
@@ -356,7 +361,7 @@ const PresaleForm = () => {
       // ---- Request Voucher From API ----
       const apiUrl =
         import.meta.env.VITE_API_URL ||
-        "https://dynastical-xzavier-unsanguinarily.ngrok-free.dev";
+        "https://iescrow-backend.onrender.com/";
   
       const requestPayload = {
         buyer: address,
@@ -491,7 +496,7 @@ const PresaleForm = () => {
         </div>
       )}
 
-      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border border-body-text overflow-hidden">
+      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border-[1px] border-body-text bg-linear-245 from-black from-50% to-logo-grad-blue/60 overflow-hidden">
         <FormTitle />
         <TokenPrice title="1 $ESCROW" subtitle={`$${tokenUsdPrice}`} />
         <SupplyStatus presaleSupply={totalPresaleSupply} tokensSold={tokensSold} />
