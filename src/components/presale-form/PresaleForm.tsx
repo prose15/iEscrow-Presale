@@ -19,6 +19,7 @@ import LINKLogo from "../../assets/img/currencies/LINK.png";
 import WBTCLogo from "../../assets/img/currencies/WBTC.png";
 import USDCLogo from "../../assets/img/currencies/USDC.png";
 import USDTLogo from "../../assets/img/currencies/USDT.png";
+import WithLines from "./WithLines";
 
 const DEFAULT_RPC_URL = import.meta.env.VITE_RPC_URL || "https://ethereum.publicnode.com";
 const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
@@ -182,15 +183,20 @@ const PresaleForm = () => {
       if (currency.isNative) {
         const balanceWei = await provider.getBalance(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6));
+        console.log(balanceWei,"balanceWei")
+        console.log(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6),"balanceWei")
       } else {
         const code = await provider.getCode(currency.address);
         if (!code || code === "0x") { setUserBalance("0.000000"); return; }
         const tokenContract = new Contract(currency.address, ERC20_ABI, provider);
         const balanceRaw = await tokenContract.balanceOf(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6));
+        console.log(balanceRaw,"balanceRaw")
+        console.log(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6),"balanceRaw")
       }
     } catch (err) {
       setUserBalance("0.000000");
+      console.log("Error fetching user balance:", err);
     }
   }, []);
 
@@ -489,7 +495,7 @@ const PresaleForm = () => {
         </div>
       )}
 
-      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border border-body-text overflow-hidden">
+      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border-[1px] border-body-text bg-linear-245 from-black from-50% to-logo-grad-blue/60 overflow-hidden">
         <FormTitle />
         <TokenPrice title="1 $ESCROW" subtitle={`$${tokenUsdPrice}`} />
         <SupplyStatus presaleSupply={totalPresaleSupply} tokensSold={tokensSold} />
