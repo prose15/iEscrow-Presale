@@ -163,7 +163,7 @@ const PresaleForm = () => {
     if (!userId || isVerified) return; // Skip if already verified
 
     try {
-      const url = `${import.meta.env.VITE_API_URL1 || 'https://iescrow-backend.onrender.com'}/api/verify/status/${userId}`;
+      const url = `${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com'}/api/verify/status/${userId}`;
       const response = await axios.get(url);
 
       if (response.data.verified === true) {
