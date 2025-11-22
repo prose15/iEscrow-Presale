@@ -49,7 +49,7 @@ const CustomConnectButton = () => {
               if (!connected) {
                 return (
                   <button 
-                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' 
+                    className='px-4 md:px-8 font-bold uppercase py-[4px] md:py-3 font-poppins tracking-tighter text-sm bg-[#1b80a4] hover:bg-[#196986] duration-200 rounded-l-full rounded-r-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed' 
                     onClick={handleConnect} 
                     disabled={isConnecting}
                     type="button">
@@ -66,7 +66,7 @@ const CustomConnectButton = () => {
                   <button
                     onClick={openChainModal}
                     type="button"
-                    className="px-3 py-2 font-poppins text-sm border border-red-500 text-red-500
+                    className="px-3 md:px-8 font-bold uppercase font-poppins text-sm border border-red-500 text-red-500
                               rounded-full bg-transparent hover:bg-red-500 hover:text-black 
                               duration-200 cursor-pointer"
                   >
@@ -81,7 +81,7 @@ const CustomConnectButton = () => {
                     onClick={openChainModal}
                     style={{ display: 'flex', alignItems: 'center' }}
                     type="button"
-                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
+                    className='px-4 md:px-8 font-bold uppercase py-[4px] md:py-3 font-poppins tracking-tighter text-sm border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
                   >
                     {chain.hasIcon && (
                       <div
@@ -109,7 +109,7 @@ const CustomConnectButton = () => {
                   <button 
                     onClick={openAccountModal} 
                     type="button"
-                    className='px-2 md:px-4 py-[4px] md:py-2 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
+                    className='px-4 md:px-8 font-bold uppercase py-[4px] md:py-3 font-poppins tracking-tighter  text-sm border-[1px] border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
                   >
                     {account.displayName}
                     {account.displayBalance

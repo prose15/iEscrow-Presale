@@ -1,20 +1,10 @@
 import CustomConnectButton from "./CustomConnectButton";
 import EscrowLogo from "../assets/logo.svg"
 
-const NavBar = () => {
+const NavBar = ({ handleOpenWhitepaper }: { handleOpenWhitepaper: () => void }) => {
   
   return (<>
-    {/* <header className="sticky flex flex-col w-full top-0 px-2 md:px-4 py-2 box-border z-50 bg-[#101010] ">
-      <div className="w-full mb-2 flex items-center justify-between">
-        <div className="w-fit flex items-center justify-between">
-          <img className="mr-2" src={EscrowLogo} alt="escrow logo" height={8} width={30}/>
-          <h1 className="text-bg-logo font-semibold">iEscrow</h1>
-        </div>
-        <CustomConnectButton />
-      </div>
-      <div className="w-full h-[1px] bg-body-text"></div>
-    </header> */}
-    <header className="fixed z-[100] top-0 left-0 w-full bg-black shadow-2xl text-text-secondary border-b border-white/20">
+    <header className="fixed font-poppins z-[100] top-0 left-0 w-full bg-[#000000] text-text-secondary">
       <nav
         className="mx-auto flex container items-center justify-between px-4 py-2 lg:py-4"
         aria-label="Global"
@@ -29,14 +19,20 @@ const NavBar = () => {
               className="w-20 md:w-24 lg:w-32"
             />
           </a>
-          <ul className="hidden lg:flex lg:items-center lg:justify-end lg:gap-x-6 lg:w-full">
+          <ul className="flex flex-row items-center justify-end gap-x-6 w-full ">
+            <li>
+            <button
+                onClick={handleOpenWhitepaper}
+                className="hover:text-white text-[#A8A8A8] font-medium font-poppins cursor-pointer"
+              >
+                Whitepaper
+              </button>
+            </li>
+
             <li>
               <CustomConnectButton />
             </li>
           </ul>
-          <div className="flex lg:hidden">
-            <CustomConnectButton />
-          </div>
 
           {/* <div className="flex lg:hidden">
             <button

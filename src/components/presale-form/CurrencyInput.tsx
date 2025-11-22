@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAccount } from "wagmi";
 
 type Props = {
   currencyBalance: string;
@@ -14,6 +15,8 @@ const DECIMAL_REGEX = /^\d*(\.\d{0,6})?$/;
 const CurrencyInput = ({ currencyBalance, currencyIconURL, currencySymbol, usdValue, value, onChange }: Props) => {
 
   const [internalValue, setInternalValue] = useState<string>("");
+  const { isConnected } = useAccount();
+  const isWalletConnected = !!isConnected;
   
   // Use controlled value if provided, otherwise use internal state
   const currencyQuantity = value !== undefined ? value : internalValue;
@@ -44,17 +47,18 @@ const CurrencyInput = ({ currencyBalance, currencyIconURL, currencySymbol, usdVa
       <img className="size-6 ml-2" src={currencyIconURL} alt={currencySymbol + ' logo'} />
       <div className="flex w-full mx-4 flex-col items-center justify-start">
         <input 
-          className="w-full p-0 m-0 text-sm md:text-base text-bg-logo font-medium placeholder:font-light"
+          className="w-full p-0 m-0 text-sm md:text-base text-bg-logo font-medium placeholder:font-light disabled:opacity-50 disabled:cursor-not-allowed"
           type="number" 
           onChange={(e) => handleChange(e.target.value)} 
           step={'0.000001'}
           value={currencyQuantity}
           min={0}
+          disabled={!isWalletConnected}
           placeholder={'0.0'}
         />
         <span className="w-full text-[12px] md:text-sm text-bg-logo font-light text-left">$ {getUSDValue(currencyQuantity).toFixed(3)} </span>
       </div>
-      <button type="button" className="font-medium bg-bg-logo text-black px-3 py-1 md:px-4 md:py-2 rounded-l-md rounded-r-md text-nowrap cursor-pointer box-border" onClick={handleMaxClick}>
+      <button disabled={!isWalletConnected} type="button" className="font-medium bg-bg-logo text-black px-3 py-1 md:px-4 md:py-2 rounded-l-md rounded-r-md text-nowrap cursor-pointer box-border disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleMaxClick}>
         Max Amount
       </button>
     </label>
