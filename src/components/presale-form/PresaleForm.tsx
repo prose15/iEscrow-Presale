@@ -19,7 +19,6 @@ import LINKLogo from "../../assets/img/currencies/LINK.png";
 import WBTCLogo from "../../assets/img/currencies/WBTC.png";
 import USDCLogo from "../../assets/img/currencies/USDC.png";
 import USDTLogo from "../../assets/img/currencies/USDT.png";
-import WithLines from "./WithLines";
 
 const DEFAULT_RPC_URL = import.meta.env.VITE_RPC_URL || "https://ethereum.publicnode.com";
 const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);

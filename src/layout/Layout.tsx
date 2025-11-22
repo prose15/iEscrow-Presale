@@ -1,5 +1,4 @@
-import { useTranslation } from "react-i18next";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NavBar from "../components/Navbar";
 import "@rainbow-me/rainbowkit/styles.css";
 import ProvidersWrapper from "../components/ProvidersWrapper";
