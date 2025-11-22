@@ -26,7 +26,7 @@ const VerificationScreen = ({ userId, onClose, onVerified }: VerificationScreenP
 
         // 🔹 Llamamos al backend para generar el token
         const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'https://dynastical-xzavier-unsanguinarily.ngrok-free.dev'}/api/verify/start`,
+          `${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com/'}/api/verify/start`,
           {
             userId,
             email: "user@example.com",
