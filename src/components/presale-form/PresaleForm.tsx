@@ -587,7 +587,9 @@ const PresaleForm = () => {
           : 'border-green-500 text-green-500 hover:bg-green-500 hover:text-black cursor-pointer'
       }`}
   >
-    {!isChecked
+    {!isChecked && amount <= 0
+      ? "Enter amount"
+      : !isChecked
       ? `Buy with ${selectedCurrencyData.symbol}`
       : !isConnected
       ? "Connect wallet"
