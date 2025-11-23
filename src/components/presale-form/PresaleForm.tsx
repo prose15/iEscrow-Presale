@@ -77,7 +77,7 @@ const PRESALE_ABI = [
   "function buyWithTokenVoucher(address token, uint256 amount, address beneficiary, tuple(address buyer, address beneficiary, address paymentToken, uint256 usdLimit, uint256 nonce, uint256 deadline, address presale) voucher, bytes signature) external"
 ];
 const TOKEN_PRICE_ABI = ["function getTokenPrice(address token) view returns (uint256 priceUSD,bool isActive,uint8 decimals)"];
-const SUPPLY_ABI = ["function totalTokensMinted() view returns (uint256)", "function maxTokensToMint() view returns (uint256)", "function canClaim() view returns (bool)", "function presaleRate() view returns (uint256)"];
+const SUPPLY_ABI = ["function totalTokensMinted() view returns (uint256)", "function maxTokensToMint() view returns (uint256)", "function canClaim() view returns (bool)", "function presaleRate() view returns (uint256)", "function gasBuffer() view returns (uint256)"];
 const AUTHORIZER_ABI = ["function getNonce(address user) view returns (uint256)"];
 const ERC20_ABI = ["function approve(address spender, uint256 amount) external returns (bool)", "function allowance(address owner, address spender) external view returns (uint256)", "function balanceOf(address account) external view returns (uint256)", "function decimals() external view returns (uint8)"];
 
@@ -95,6 +95,7 @@ const PresaleForm = () => {
   const [canClaim, setCanClaim] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [tokenUsdPrice, setTokenUsdPrice] = useState("0.015");
+  const [gasBufferAmount, setGasBufferAmount] = useState<number>(0);
   // const [showCountryModal, setShowCountryModal] = useState(false);
   // const [selectedCountry, setSelectedCountry] = useState<'US' | 'Other'>('Other');
   const [tokenAmount, setTokenAmount] = useState<number>(0);
@@ -152,7 +153,7 @@ const PresaleForm = () => {
     const currencyUsd = selectedCurrencyData?.priceUsd || 0;
     const escrowUsd = parseFloat(tokenUsdPrice || "0");
     if (amount > 0 && currencyUsd > 0 && escrowUsd > 0) {
-      setTokenAmount(amount * currencyUsd / escrowUsd);
+      setTokenAmount(((amount-gasBufferAmount) * currencyUsd) / escrowUsd);
     } else {
       setTokenAmount(0);
     }
@@ -242,19 +243,22 @@ const PresaleForm = () => {
       try {
         const provider = getRpcProvider();
         const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, SUPPLY_ABI, provider);
-        const [maxTokens, mintedTokens, claimStatus, presaleRateRaw] = await Promise.all([
+        const [maxTokens, mintedTokens, claimStatus, presaleRateRaw, gasBufferVal] = await Promise.all([
           presaleContract.maxTokensToMint(),
           presaleContract.totalTokensMinted(),
           presaleContract.canClaim(),
           presaleContract.presaleRate(),
+          presaleContract.gasBuffer()
         ]);
         const maxSupply = Number(formatUnits(maxTokens, 18));
         const sold = Number(formatUnits(mintedTokens, 18));
         const tokensPerUsd = Number(formatUnits(presaleRateRaw, 18));
+        const gasBufferFinal = Number(formatUnits(gasBufferVal, 18));
         if (!Number.isNaN(maxSupply)) setTotalPresaleSupply(maxSupply);
         if (!Number.isNaN(sold)) setTokensSold(sold);
         setCanClaim(Boolean(claimStatus));
         setTokenUsdPrice(tokensPerUsd > 0 ? (1 / tokensPerUsd).toFixed(3) : "0.015");
+        setGasBufferAmount(gasBufferFinal);
       } catch (err) { setTokenUsdPrice("0.015"); }
     }
   }, []);
