@@ -1,7 +1,7 @@
 import CustomConnectButton from "./CustomConnectButton";
 import EscrowLogo from "../assets/logo.svg"
 
-const NavBar = ({ handleOpenWhitepaper }: { handleOpenWhitepaper: () => void }) => {
+const NavBar = () => {
   
   return (<>
     <header className="fixed font-poppins z-[100] top-0 left-0 w-full bg-[#000000] text-text-secondary">
