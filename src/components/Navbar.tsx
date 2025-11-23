@@ -21,15 +21,6 @@ const NavBar = ({ handleOpenWhitepaper }: { handleOpenWhitepaper: () => void }) 
           </a>
           <ul className="flex flex-row items-center justify-end gap-x-6 w-full ">
             <li>
-            <button
-                onClick={handleOpenWhitepaper}
-                className="hover:text-white text-[#A8A8A8] font-medium font-poppins cursor-pointer"
-              >
-                Whitepaper
-              </button>
-            </li>
-
-            <li>
               <CustomConnectButton />
             </li>
           </ul>

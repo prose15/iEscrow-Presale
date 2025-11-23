@@ -299,7 +299,7 @@ const PresaleForm = () => {
 
   const startVerification = async () => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com/'}/api/verify/start`, {
+      await axios.post(`${import.meta.env.VITE_API_URL || 'https://iescrow-backend.onrender.com'}/api/verify/start`, {
         userId: address,
         email: "user@example.com",
         phone: "+1234567890",
@@ -371,7 +371,7 @@ const PresaleForm = () => {
       // ---- Request Voucher From API ----
       const apiUrl =
         import.meta.env.VITE_API_URL ||
-        "https://iescrow-backend.onrender.com/";
+        "https://iescrow-backend.onrender.com";
   
       const requestPayload = {
         buyer: address,

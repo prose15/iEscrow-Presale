@@ -76,12 +76,12 @@ const CustomConnectButton = () => {
               }
 
               return (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div className='flex sm:flex-row flex-col gap-4 md:gap-x-12 items-center'>
                   <button
                     onClick={openChainModal}
                     style={{ display: 'flex', alignItems: 'center' }}
                     type="button"
-                    className='px-4 md:px-8 font-bold uppercase py-[4px] md:py-3 font-poppins tracking-tighter text-sm border-blue-2 bg-blue-2 hover:bg-blue-hover hover:border-blue-hover duration-200 rounded-l-full rounded-r-full cursor-pointer'
+                    className='px-4 md:px-12 font-bold uppercase py-[4px] md:py-3 font-poppins border-2 border-white text-sm  hover:bg-white hover:text-black duration-200 rounded-l-full rounded-r-full cursor-pointer'
                   >
                     {chain.hasIcon && (
                       <div
