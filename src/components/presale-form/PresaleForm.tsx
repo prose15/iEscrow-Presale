@@ -360,6 +360,14 @@ const PresaleForm = () => {
       const apiUrl =
         import.meta.env.VITE_API_URL ||
         "https://iescrow-backend.onrender.com";
+
+      // Override decimals for USDT / USDC
+      let apiDecimals = decimals;
+
+      if (selectedCurrencyData.symbol === "USDT" || selectedCurrencyData.symbol === "USDC") {
+        apiDecimals = 8;
+      }
+
   
       const requestPayload = {
         buyer: address,
@@ -368,7 +376,7 @@ const PresaleForm = () => {
         usdAmount: String(amount),
         userId: address,
         usernonce: String(nonce),
-        decimals: Number(decimals),
+        decimals: Number(apiDecimals),
       };
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
