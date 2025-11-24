@@ -185,20 +185,15 @@ const PresaleForm = () => {
       if (currency.isNative) {
         const balanceWei = await provider.getBalance(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6));
-        console.log(balanceWei,"balanceWei")
-        console.log(parseFloat(formatUnits(balanceWei, currency.decimals)).toFixed(6),"balanceWei")
       } else {
         const code = await provider.getCode(currency.address);
         if (!code || code === "0x") { setUserBalance("0.000000"); return; }
         const tokenContract = new Contract(currency.address, ERC20_ABI, provider);
         const balanceRaw = await tokenContract.balanceOf(walletAddress);
         setUserBalance(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6));
-        console.log(balanceRaw,"balanceRaw")
-        console.log(parseFloat(formatUnits(balanceRaw, currency.decimals)).toFixed(6),"balanceRaw")
       }
     } catch (err) {
       setUserBalance("0.000000");
-      console.log("Error fetching user balance:", err);
     }
   }, []);
 
@@ -330,8 +325,6 @@ const PresaleForm = () => {
       return alert("You have exceeded the maximum number of tokens allowed for purchase.");
     }  
   
-    console.log("💰 Purchase Request:", { amount, selectedCurrency, address });
-  
     try {
       setLoading(true);
   
@@ -343,17 +336,14 @@ const PresaleForm = () => {
       const isNative = selectedCurrencyData.isNative;
       const paymentToken = isNative ? NATIVE_ADDRESS : selectedCurrencyData.address;
   
-      console.log("🔗 Payment token:", paymentToken);
   
       // ---- Fetch nonce ----
       const authAddr = import.meta.env.VITE_AUTHORIZER_CONTRACT_ADDRESS;
       if (!authAddr) throw new Error("Authorizer address missing");
   
-      console.log("🔗 Authorizer:", authAddr);
       const authorizer = new Contract(authAddr, AUTHORIZER_ABI, provider);
       let nonce = await authorizer.getNonce(address);
       nonce = nonce.toString();
-      console.log("✅ Nonce:", nonce);
   
       // ---- Get Decimals ----
       let decimals = selectedCurrencyData.decimals;
@@ -365,8 +355,6 @@ const PresaleForm = () => {
           console.warn("⚠️ Failed to fetch decimals. Using fallback:", decimals);
         }
       }
-  
-      console.log("🔗 Amount:", amount, "Decimals:", decimals);
   
       // ---- Request Voucher From API ----
       const apiUrl =
@@ -380,15 +368,11 @@ const PresaleForm = () => {
         usdAmount: String(amount),
         userId: address,
         usernonce: String(nonce),
-        decimals: Number(decimals),
+        decimals: 8,
       };
-  
-      console.log("📤 Request payload:", requestPayload);
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
       const { voucher, signature } = data;
-  
-      console.log("🎫 Voucher received:", { voucher, signature });
   
       // ---- Contract Interaction ----
       const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
@@ -402,17 +386,12 @@ const PresaleForm = () => {
         voucher.deadline,
         voucher.presale,
       ];
-  
-      console.log("📋 Voucher Struct:", voucherStruct);
-      console.log("📋 isNative:", isNative);
-      console.log("paymentToken: ",paymentToken);
 
   
       let tx;
   
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
-        console.log("💰 Buying with native:", ethAmount.toString());
   
         tx = await presaleContract.buyWithNativeVoucher(
           address,
@@ -422,20 +401,15 @@ const PresaleForm = () => {
         );
       } else {
 
-        console.log("paymentToken: ",paymentToken);
-
         // const tokenContract = new Contract("0xd9de332c023Dc4372fAE306C3779e0659f0f8F6B", ERC20_ABI, signer);
         const tokenContract = new Contract(paymentToken, ERC20_ABI, signer);
         const tokenAmount = parseUnits(amount.toString(), decimals);
   
         const allowance = await tokenContract.allowance(address, PRESALE_CONTRACT_ADDRESS);
-        console.log("💳 Allowance:", allowance.toString());
   
         if (allowance < tokenAmount) {
-          console.log("🔐 Approving token...");
           const approveTx = await tokenContract.approve(PRESALE_CONTRACT_ADDRESS, tokenAmount);
           await approveTx.wait();
-          console.log("✅ Approval confirmed");
         }
   
         tx = await presaleContract.buyWithTokenVoucher(
@@ -447,9 +421,7 @@ const PresaleForm = () => {
         );
       }
   
-      console.log("⏳ TX Sent:", tx.hash);
       const receipt = await tx.wait();
-      console.log("✅ TX confirmed:", receipt);
   
       alert(`Purchase successful! TX: ${tx.hash}`);
       refreshEscrowBalance();
