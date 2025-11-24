@@ -421,7 +421,7 @@ const PresaleForm = () => {
         );
       }
   
-      const receipt = await tx.wait();
+      // const receipt = await tx.wait();
   
       alert(`Purchase successful! TX: ${tx.hash}`);
       refreshEscrowBalance();
