@@ -262,7 +262,7 @@ const PresaleForm = () => {
 
   // Poll only if not verified
   useEffect(() => {
-    if (isConnected && address && !isVerified) {
+    if (isConnected && address) {
       checkVerificationStatus(address);
       fetchUserBalance(address, selectedCurrencyData);
       refreshEscrowBalance();
@@ -279,7 +279,7 @@ const PresaleForm = () => {
         clearInterval(verifyInt);
       };
     }
-  }, [isConnected, address, isVerified, selectedCurrencyData, refreshEscrowBalance, fetchUserBalance]);
+  }, [isConnected, address, selectedCurrencyData, refreshEscrowBalance, fetchUserBalance]);
 
   // Persist to localStorage
   // useEffect(() => {
