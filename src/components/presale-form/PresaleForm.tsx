@@ -368,7 +368,7 @@ const PresaleForm = () => {
         usdAmount: String(amount),
         userId: address,
         usernonce: String(nonce),
-        decimals: 8,
+        decimals: Number(decimals),
       };
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
