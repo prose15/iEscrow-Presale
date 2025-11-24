@@ -37,15 +37,16 @@ const SupplyStatus = ({ presaleSupply, tokensSold }: Props) => {
         </span>
       </div>
 
-      {/* 🔹 Barra de progreso (se llena conforme se venden) */}
-      <div className="relative w-full my-2 p-1 rounded-l-full rounded-r-full border border-body-text">
+      {/* 🔹 Bar */}
+      <div className="relative w-full my-2 p-1 rounded-full border border-body-text">
         <div
           style={{
             width: `${percentageSold}%`,
             transition: "width 0.6s ease-in-out",
+            background: "linear-gradient(90deg, #30c2e2, #e020f1)",
           }}
-          className="h-2 rounded-l-full rounded-r-full bg-gradient-to-r from-logo-grad-green via-logo-grad-blue to-logo-grad-purple"
-        ></div>
+          className={`h-2 rounded-full bg-gradient-to-r`}
+        />
       </div>
 
       {/* 🔹 Total Supply */}
