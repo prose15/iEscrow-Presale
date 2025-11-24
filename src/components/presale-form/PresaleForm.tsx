@@ -95,6 +95,7 @@ const PresaleForm = () => {
   const [canClaim, setCanClaim] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [tokenUsdPrice, setTokenUsdPrice] = useState("0.015");
+  const [tokensPerUsd, setTokensPerUsd] = useState<number>(66.67); // Default fallback: 1/0.015 = 66.67 tokens per USD
   const [gasBufferAmount, setGasBufferAmount] = useState<number>(0);
   // const [showCountryModal, setShowCountryModal] = useState(false);
   // const [selectedCountry, setSelectedCountry] = useState<'US' | 'Other'>('Other');
@@ -151,13 +152,31 @@ const PresaleForm = () => {
   useEffect(() => {
     const amount = parseFloat(amountInput || "0");
     const currencyUsd = selectedCurrencyData?.priceUsd || 0;
-    const escrowUsd = parseFloat(tokenUsdPrice || "0");
-    if (amount > 0 && currencyUsd > 0 && escrowUsd > 0) {
-      setTokenAmount(((amount-gasBufferAmount) * currencyUsd) / escrowUsd);
+    
+    // Use tokensPerUsd from contract, or fallback to default (66.67 = 1/0.015)
+    const effectiveTokensPerUsd = tokensPerUsd > 0 ? tokensPerUsd : 66.67;
+    
+    // Calculate using tokensPerUsd directly for accuracy
+    if (amount > 0 && currencyUsd > 0 && effectiveTokensPerUsd > 0) {
+      let effectiveAmount = amount;
+      
+      // For Ethereum only: subtract estimated gas fee
+      // For other tokens: use full amount (gas is paid separately in ETH)
+      if (selectedCurrencyData?.isNative && selectedCurrencyData?.symbol === "ETH") {
+        // Estimate gas fee: use gasBufferAmount from contract or reasonable default (0.001 ETH)
+        const estimatedGasFee = gasBufferAmount > 0 ? gasBufferAmount : 0.001;
+        effectiveAmount = Math.max(0, amount - estimatedGasFee);
+      }
+      
+      // Convert effective amount to USD value
+      const usdValue = effectiveAmount * currencyUsd;
+      // Calculate tokens: USD value * tokens per USD
+      const calculatedAmount = usdValue * effectiveTokensPerUsd;
+      setTokenAmount(calculatedAmount > 0 ? calculatedAmount : 0);
     } else {
       setTokenAmount(0);
     }
-  }, [amountInput, selectedCurrencyData, tokenUsdPrice]);
+  }, [amountInput, selectedCurrencyData, tokensPerUsd, gasBufferAmount]);
 
   const getRpcProvider = () => new JsonRpcProvider(DEFAULT_RPC_URL, DEFAULT_CHAIN_ID);
 
@@ -230,7 +249,14 @@ const PresaleForm = () => {
       const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, ["function totalPurchased(address user) view returns (uint256)"], provider);
       const balance = await presaleContract.totalPurchased(address);
       setEscrowBalance(parseFloat(formatUnits(balance, 18)).toFixed(6));
-    } catch (err) { console.error("Error fetching escrow:", err); } finally { setRefreshingEscrow(false); }
+    } catch (err: any) {
+      // Silently handle rate limit errors and other RPC issues
+      if (err?.code === "BAD_DATA" || err?.code === -32005 || err?.message?.includes("Too Many Requests")) {
+        console.warn("Rate limited or RPC error fetching escrow balance, will retry later");
+      } else {
+        console.error("Error fetching escrow:", err);
+      }
+    } finally { setRefreshingEscrow(false); }
   }, [address]);
 
   const fetchSupplyStats = useCallback(async () => {
@@ -247,12 +273,13 @@ const PresaleForm = () => {
         ]);
         const maxSupply = Number(formatUnits(maxTokens, 18));
         const sold = Number(formatUnits(mintedTokens, 18));
-        const tokensPerUsd = Number(formatUnits(presaleRateRaw, 18));
+        const tokensPerUsdValue = Number(formatUnits(presaleRateRaw, 18));
         const gasBufferFinal = Number(formatUnits(gasBufferVal, 18));
         if (!Number.isNaN(maxSupply)) setTotalPresaleSupply(maxSupply);
         if (!Number.isNaN(sold)) setTokensSold(sold);
         setCanClaim(Boolean(claimStatus));
-        setTokenUsdPrice(tokensPerUsd > 0 ? (1 / tokensPerUsd).toFixed(3) : "0.015");
+        setTokensPerUsd(tokensPerUsdValue > 0 ? tokensPerUsdValue : 0);
+        setTokenUsdPrice(tokensPerUsdValue > 0 ? (1 / tokensPerUsdValue).toFixed(3) : "0.015");
         setGasBufferAmount(gasBufferFinal);
       } catch (err) { setTokenUsdPrice("0.015"); }
     }
@@ -400,13 +427,71 @@ const PresaleForm = () => {
   
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
-  
-        tx = await presaleContract.buyWithNativeVoucher(
+        
+        // Simple balance check
+        const balance = await provider.getBalance(address);
+        if (balance < ethAmount) {
+          throw new Error(`Insufficient ETH balance. You need ${amount} ETH but only have ${formatUnits(balance, 18)} ETH.`);
+        }
+        
+        // Build transaction data
+        const populatedTx = await presaleContract.buyWithNativeVoucher.populateTransaction(
           address,
           voucherStruct,
           signature,
           { value: ethAmount }
         );
+        
+        // Use walletClient directly to send transaction - this bypasses ethers.js gas estimation
+        // and lets MetaMask handle everything, including showing the popup
+        if (!walletClient) {
+          throw new Error("Wallet not connected");
+        }
+        
+        // Try to estimate gas first, but use a reasonable default if estimation fails
+        // This prevents MetaMask from using inflated gas estimates
+        let gasLimit: bigint = 300000n; // Safe default for contract calls with signature verification
+        
+        try {
+          // Try to estimate gas using the provider
+          const estimatedGas = await provider.estimateGas({
+            to: populatedTx.to!,
+            from: address,
+            data: populatedTx.data,
+            value: ethAmount
+          });
+          // Add 20% buffer to estimated gas for safety
+          gasLimit = (estimatedGas * 120n) / 100n;
+          
+          // Cap at reasonable maximum (500k) to prevent extremely high estimates
+          if (gasLimit > 500000n) {
+            console.warn(`Gas estimate (${gasLimit.toString()}) seems too high, capping at 500k`);
+            gasLimit = 500000n;
+          }
+        } catch (gasErr) {
+          // If estimation fails, use default - this is fine, MetaMask will handle it
+          console.warn("Gas estimation failed, using default 300k:", gasErr);
+        }
+        
+        // Send transaction with reasonable gas limit
+        const txHash = await walletClient.sendTransaction({
+          to: populatedTx.to as `0x${string}`,
+          data: populatedTx.data as `0x${string}`,
+          value: ethAmount,
+          gas: gasLimit, // Use estimated or default gas limit
+        });
+        
+        // Create a transaction response object for consistency
+        tx = {
+          hash: txHash,
+          wait: async () => {
+            const receipt = await provider.getTransactionReceipt(txHash);
+            if (!receipt) {
+              throw new Error("Transaction receipt not found");
+            }
+            return receipt;
+          }
+        } as any;
       } else {
 
         // const tokenContract = new Contract("0xd9de332c023Dc4372fAE306C3779e0659f0f8F6B", ERC20_ABI, signer);
@@ -435,7 +520,55 @@ const PresaleForm = () => {
       refreshEscrowBalance();
     } catch (err: any) {
       console.error("❌ Buy Error:", err);
-      alert(`Failed to buy tokens: ${err.response?.data?.error || err.reason || err.message}`);
+      
+      // Better error message extraction
+      let errorMessage = "Failed to buy tokens";
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.reason || err.shortMessage) {
+        errorMessage = err.reason || err.shortMessage;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.data && err.data !== "0x" && err.data.length >= 10) {
+        // Try to decode revert reason from error data
+        try {
+          const errorSelector = err.data.slice(0, 10);
+          // Check if it's a known error selector first
+          const commonErrors: Record<string, string> = {
+            "0x08c379a0": "Error occurred (string error)",
+            "0x4e487b71": "Panic occurred",
+            "0x72567b64": "Invalid voucher or signature", // Common presale error
+          };
+          
+          if (commonErrors[errorSelector]) {
+            errorMessage = `Transaction failed: ${commonErrors[errorSelector]}`;
+          } else {
+            // Try to decode using contract interface if available
+            try {
+              // Recreate contract interface for error decoding
+              const tempProvider = getRpcProvider();
+              const tempContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, tempProvider);
+              const decodedError = tempContract.interface.parseError(err.data);
+              if (decodedError) {
+                errorMessage = `Transaction failed: ${decodedError.name}`;
+              } else {
+                errorMessage = `Transaction failed: Contract reverted (error: ${errorSelector})`;
+              }
+            } catch {
+              errorMessage = `Transaction failed: Contract reverted (error: ${errorSelector})`;
+            }
+          }
+        } catch {
+          errorMessage = "Transaction failed. Please check: voucher validity, deadline, and contract state.";
+        }
+      } else if (err.code === "CALL_EXCEPTION" || err.code === "UNPREDICTABLE_GAS_LIMIT") {
+        errorMessage = "Transaction would fail. Please check: voucher validity, deadline, sufficient balance, and contract state.";
+      } else {
+        errorMessage = "Transaction failed. Please check your balance and try again.";
+      }
+      
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -509,7 +642,18 @@ const PresaleForm = () => {
         <CurrentBalance currentBalance={userBalance} currency={{ iconURL: selectedCurrencyData.iconURL, symbol: selectedCurrencyData.symbol }} />
         <CurrencyInput currencyBalance={userBalance} currencyIconURL={selectedCurrencyData.iconURL} currencySymbol={selectedCurrency} usdValue={selectedCurrencyData.priceUsd} value={amountInput} onChange={setAmountInput} />
 
-        <TokenPrice title="You will receive" subtitle={loading ? "Calculating..." : tokenAmount > 0 ? `${tokenAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} $ESCROW` : "—"} />
+        <TokenPrice 
+          title="You will receive" 
+          subtitle={
+            amountInput && parseFloat(amountInput) > 0
+              ? selectedCurrencyData?.priceUsd > 0
+                ? tokenAmount > 0 
+                  ? `${tokenAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} $ESCROW`
+                  : "0 $ESCROW"
+                : "Calculating..."
+              : "—"
+          } 
+        />
 
         <TokenBalance balance={escrowBalance} loading={refreshingEscrow} onRefresh={refreshEscrowBalance} canClaim={canClaim} claiming={claiming} onClaim={handleClaimTokens} />
 
