@@ -364,7 +364,7 @@ const PresaleForm = () => {
       // Override decimals for USDT / USDC
       let apiDecimals = decimals;
 
-      if (selectedCurrencyData.symbol === "USDT" || selectedCurrencyData.symbol === "USDC") {
+      if (selectedCurrencyData.symbol === "USDT" || selectedCurrencyData.symbol === "USDC" || selectedCurrencyData.symbol === "WBTC" || selectedCurrencyData.symbol === "ETH") {
         apiDecimals = 8;
       }
 
