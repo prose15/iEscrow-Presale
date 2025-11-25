@@ -76,7 +76,7 @@ const CustomConnectButton = () => {
               }
 
               return (
-                <div className='flex sm:flex-row flex-col gap-4 md:gap-x-12 items-center'>
+                <div className='flex sm:flex-row flex-col gap-4 md:gap-x-6 items-center'>
                   <button
                     onClick={openChainModal}
                     style={{ display: 'flex', alignItems: 'center' }}

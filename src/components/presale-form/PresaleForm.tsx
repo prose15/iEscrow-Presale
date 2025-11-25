@@ -635,7 +635,7 @@ const PresaleForm = () => {
         </div>
       )}
 
-      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border-[1px] border-body-text bg-linear-245 from-black from-50% to-logo-grad-blue/60 overflow-hidden">
+      <form id="presale-form" className="relative max-w-[720px] py-4 px-4 md:px-6 md:py-8 mb-4 rounded-md border-[1px] border-body-text bg-linear-245 from-black from-50% to-logo-grad-blue/60 overflow-hidden max-lg:mt-7">
         <FormTitle />
         <TokenPrice title="1 $ESCROW" subtitle={`$${tokenUsdPrice}`} />
         <SupplyStatus presaleSupply={totalPresaleSupply} tokensSold={tokensSold} />
