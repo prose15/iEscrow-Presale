@@ -388,19 +388,35 @@ const PresaleForm = () => {
         import.meta.env.VITE_API_URL ||
         "https://iescrow-backend.onrender.com";
 
-      // Override decimals for USDT / USDC
+      // Override decimals for USDT / USDC / WBTC / ETH (backend expects 8 decimals)
       let apiDecimals = decimals;
 
       if (selectedCurrencyData.symbol === "USDT" || selectedCurrencyData.symbol === "USDC" || selectedCurrencyData.symbol === "WBTC" || selectedCurrencyData.symbol === "ETH") {
         apiDecimals = 8;
       }
 
-  
+      // Calculate USD amount for voucher
+      // CRITICAL: Backend needs actual USD value, not raw token amount
+      // Contract calculates: usdAmount = (paymentAmount * priceUSD) / (10 ** decimals)
+      // We must send the USD value so backend can set voucher.usdLimit correctly (in 8 decimals)
+      let usdAmountForVoucher: number;
+
+      if (isNative && selectedCurrencyData.symbol === "ETH") {
+        // For ETH: Contract applies gas buffer, so voucher USD should match
+        // Frontend already accounts for gas buffer in "You will receive" calculation
+        const effectiveAmount = Math.max(0, amount - (gasBufferAmount > 0 ? gasBufferAmount : 0.0005));
+        usdAmountForVoucher = effectiveAmount * selectedCurrencyData.priceUsd;
+      } else {
+        // For tokens: Use full amount (gas is paid separately in ETH)
+        // Convert token amount to USD: amount * priceUsd
+        usdAmountForVoucher = amount * selectedCurrencyData.priceUsd;
+      }
+
       const requestPayload = {
         buyer: address,
         beneficiary: address,
         paymentToken,
-        usdAmount: String(amount),
+        usdAmount: String(usdAmountForVoucher), // ✅ Send USD value, not token amount
         userId: address,
         usernonce: String(nonce),
         decimals: Number(apiDecimals),
