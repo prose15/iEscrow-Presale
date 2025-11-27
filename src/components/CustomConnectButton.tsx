@@ -93,8 +93,8 @@ const CustomConnectButton = () => {
                       }
                     }}
                     type="button"
-                    className="px-3 md:px-8 font-bold uppercase font-poppins text-sm border border-red-500 text-red-500
-                              rounded-full bg-transparent hover:bg-red-500 hover:text-black 
+                    className="px-3 md:px-8 py-2 font-bold uppercase font-poppins text-sm border border-white text-white
+                              rounded-full bg-transparent hover:bg-white hover:text-black 
                               duration-200 cursor-pointer"
                   >
                     Wrong Network — Switch to Ethereum Mainnet
