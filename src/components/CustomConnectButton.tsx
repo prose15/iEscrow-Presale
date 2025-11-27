@@ -4,6 +4,21 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 const CustomConnectButton = () => {
   const [isConnecting, setIsConnecting] = useState(false);
 
+  // Simple mobile detection
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const hasInjected = typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
+  const wcProjectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
+  const hasValidWalletConnect = Boolean(wcProjectId && wcProjectId !== 'YOUR_PROJECT_ID');
+
+  // Deep-link into MetaMask mobile app to open the dapp directly
+  const openMetaMaskDeeplink = () => {
+    const dappUrl = typeof window !== 'undefined'
+      ? window.location.href.replace(/^https?:\/\//, '')
+      : '';
+    // Official MetaMask app link deep-link that works across iOS/Android
+    window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
+  };
+
   return (
     <ConnectButton.Custom>
       {({
@@ -28,7 +43,13 @@ const CustomConnectButton = () => {
         const handleConnect = () => {
           if (!isConnecting) {
             setIsConnecting(true);
-            openConnectModal();
+            // On mobile browsers without injected provider and without WalletConnect configured,
+            // deep-link into MetaMask app so the site opens in its in-app browser.
+            if (isMobile && !hasInjected && !hasValidWalletConnect) {
+              openMetaMaskDeeplink();
+            } else {
+              openConnectModal();
+            }
             // Reset connecting state after a delay to allow for connection attempt
             setTimeout(() => setIsConnecting(false), 2000);
           }
@@ -59,12 +80,18 @@ const CustomConnectButton = () => {
               }
 
               // Allow ONLY Ethereum Mainnet
-              const allowedChain = 1;
+              const allowedChain = Number(import.meta.env.VITE_CHAIN_ID || 1);
 
               if (connected && chain?.id !== allowedChain) {
                 return (
                   <button
-                    onClick={openChainModal}
+                    onClick={() => {
+                      if (isMobile && !hasInjected && !hasValidWalletConnect) {
+                        openMetaMaskDeeplink();
+                      } else {
+                        openChainModal();
+                      }
+                    }}
                     type="button"
                     className="px-3 md:px-8 font-bold uppercase font-poppins text-sm border border-red-500 text-red-500
                               rounded-full bg-transparent hover:bg-red-500 hover:text-black 
@@ -78,7 +105,13 @@ const CustomConnectButton = () => {
               return (
                 <div className='flex sm:flex-row flex-col gap-4 md:gap-x-6 items-center'>
                   <button
-                    onClick={openChainModal}
+                    onClick={() => {
+                      if (isMobile && !hasInjected && !hasValidWalletConnect) {
+                        openMetaMaskDeeplink();
+                      } else {
+                        openChainModal();
+                      }
+                    }}
                     style={{ display: 'flex', alignItems: 'center' }}
                     type="button"
                     className='px-4 md:px-12 font-bold uppercase py-[4px] md:py-3 font-poppins border-2 border-white text-sm  hover:bg-white hover:text-black duration-200 rounded-l-full rounded-r-full cursor-pointer'

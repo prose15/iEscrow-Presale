@@ -21,7 +21,7 @@ import USDCLogo from "../../assets/img/currencies/USDC.png";
 import USDTLogo from "../../assets/img/currencies/USDT.png";
 
 const DEFAULT_RPC_URL = import.meta.env.VITE_RPC_URL || "https://ethereum.publicnode.com";
-const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
+const DEFAULT_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 1);
 const PRICE_DECIMALS = 8;
 const NATIVE_ADDRESS = "0x0000000000000000000000000000000000000000";
 
