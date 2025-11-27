@@ -39,7 +39,8 @@ const config = getDefaultConfig({
       groupName: "Popular",
       wallets: [
         metaMaskWallet,
-        walletConnectWallet,
+        // Only include WalletConnect when a valid projectId is provided
+        ...(projectId && projectId !== "YOUR_PROJECT_ID" ? [walletConnectWallet] : []),
         baseAccount
       ],
     },
@@ -47,6 +48,10 @@ const config = getDefaultConfig({
 });
 
 const ProvidersWrapper = ({ children }: PropsWithChildren) => {
+  if (projectId === "YOUR_PROJECT_ID" && typeof window !== "undefined") {
+    // eslint-disable-next-line no-console
+    console.warn("[WalletConnect] VITE_WALLET_CONNECT_PROJECT_ID is not set. Mobile deep-links via WalletConnect will be unavailable.");
+  }
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
