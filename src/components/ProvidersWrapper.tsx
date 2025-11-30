@@ -1,6 +1,7 @@
 import {
   darkTheme,
   RainbowKitProvider,
+  connectorsForWallets,
 } from "@rainbow-me/rainbowkit";
 
 import {
@@ -9,11 +10,15 @@ import {
   baseAccount
 } from "@rainbow-me/rainbowkit/wallets";
 
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { PropsWithChildren } from "react";
-import { WagmiProvider } from "wagmi";
+import {
+  WagmiProvider,
+  createConfig,
+} from "wagmi";
+
 import { mainnet } from "wagmi/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { http } from "wagmi";
+import type { PropsWithChildren } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,37 +29,45 @@ const queryClient = new QueryClient({
   },
 });
 
-const projectId =
-  import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || "YOUR_PROJECT_ID";
+const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
 
-const config = getDefaultConfig({
-  appName: "Escrow Presale",
-  projectId,
-  chains: [mainnet],
-  ssr: false,
+const isMobile =
+  typeof navigator !== "undefined" &&
+  /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  // ⭐ CUSTOM WALLET LIST — Rainbow Wallet REMOVED
-  wallets: [
+// ************* FIX STARTS HERE *************
+
+// Build connectors via RainbowKit (no 'chains' option on wallets in v2)
+const connectors = connectorsForWallets(
+  [
     {
-      groupName: "Popular",
+      groupName: "Recommended",
       wallets: [
         metaMaskWallet,
-        // Only enable WalletConnect on desktop browsers — not on mobile MetaMask
-        ...(typeof window !== "undefined" && !/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-          ? [walletConnectWallet]
-          : []
-        ),
+        // Allow WalletConnect ONLY on desktop
+        ...(isMobile ? [] : [walletConnectWallet]),
         baseAccount,
       ],
     },
   ],
+  {
+    appName: "iEscrow Presale",
+    projectId,
+  }
+);
+
+const config = createConfig({
+  chains: [mainnet],
+  transports: {
+    [mainnet.id]: http(), // must use http()
+  },
+  connectors, // <-- our safe connector list
+  ssr: false,
 });
 
+// ************* FIX ENDS HERE *************
+
 const ProvidersWrapper = ({ children }: PropsWithChildren) => {
-  if (projectId === "YOUR_PROJECT_ID" && typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.warn("[WalletConnect] VITE_WALLET_CONNECT_PROJECT_ID is not set. Mobile deep-links via WalletConnect will be unavailable.");
-  }
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
