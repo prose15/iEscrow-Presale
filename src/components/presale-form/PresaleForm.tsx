@@ -590,8 +590,6 @@ const PresaleForm = () => {
       setLoading(false);
     }
   };
-  
-  
 
   const handleClaimTokens = async () => {
     if (!isConnected || !address || !canClaim || !walletClient) return alert("Cannot claim");

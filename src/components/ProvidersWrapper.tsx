@@ -20,31 +20,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "wagmi";
 import type { PropsWithChildren } from "react";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
 
+// Detect mobile browser
 const isMobile =
   typeof navigator !== "undefined" &&
   /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-// ************* FIX STARTS HERE *************
-
-// Build connectors via RainbowKit (no 'chains' option on wallets in v2)
+// ----------------------------
+//  FIXED CONNECTOR LIST
+// ----------------------------
 const connectors = connectorsForWallets(
   [
     {
       groupName: "Recommended",
       wallets: [
         metaMaskWallet,
-        // Allow WalletConnect ONLY on desktop
+        // Allow WalletConnect only on desktop (NOT mobile MetaMask app)
         ...(isMobile ? [] : [walletConnectWallet]),
         baseAccount,
       ],
@@ -56,18 +50,19 @@ const connectors = connectorsForWallets(
   }
 );
 
+// ----------------------------
+//  WAGMI CONFIG
+// ----------------------------
 const config = createConfig({
   chains: [mainnet],
   transports: {
-    [mainnet.id]: http(), // must use http()
+    [mainnet.id]: http(), // REQUIRED
   },
-  connectors, // <-- our safe connector list
+  connectors,
   ssr: false,
 });
 
-// ************* FIX ENDS HERE *************
-
-const ProvidersWrapper = ({ children }: PropsWithChildren) => {
+export default function ProvidersWrapper({ children }: PropsWithChildren) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
@@ -77,6 +72,4 @@ const ProvidersWrapper = ({ children }: PropsWithChildren) => {
       </QueryClientProvider>
     </WagmiProvider>
   );
-};
-
-export default ProvidersWrapper;
+}
