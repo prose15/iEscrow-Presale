@@ -382,7 +382,7 @@ const PresaleForm = () => {
   // };
 
   const handleBuyTokens = async () => {
-    console.log("handleBuyTokens");
+    console.log("SecondTimeHandleBuyTokens");
     if (!isConnected || !address) return alert("Please connect your wallet first");
     if (!amount || amount <= 0) return alert("Please enter a valid amount to purchase");
     if (!isVerified) return alert("Please complete verification first");
@@ -465,8 +465,13 @@ const PresaleForm = () => {
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
       const { voucher, signature } = data;
 
-      // Ensure signature is valid BytesLike for ethers
-      const sigHex = normalizeSignature(signature);
+      // Canonicalize signature to a 0x-hex serialized signature (handles strings, r/s/v, Buffer-like)
+      let sigHex: `0x${string}`;
+      try {
+        sigHex = Signature.from(signature as any).serialized as `0x${string}`;
+      } catch {
+        sigHex = normalizeSignature(signature);
+      }
   
       // ---- Contract Interaction ----
       const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
@@ -533,9 +538,14 @@ const PresaleForm = () => {
         }
         
         // Send transaction with reasonable gas limit
+        // Ensure data is hex string for WalletClient
+        const dataHex: `0x${string}` = typeof populatedTx.data === "string"
+          ? (isHexString(populatedTx.data) ? populatedTx.data as `0x${string}` : hexlify(populatedTx.data as any) as `0x${string}`)
+          : hexlify(populatedTx.data as any) as `0x${string}`;
+
         const txHash = await walletClient.sendTransaction({
           to: populatedTx.to as `0x${string}`,
-          data: populatedTx.data as `0x${string}`,
+          data: dataHex,
           value: ethAmount,
           gas: gasLimit, // Use estimated or default gas limit
         });
