@@ -383,7 +383,7 @@ const PresaleForm = () => {
 
   const handleBuyTokens = async () => {
     try {
-      console.log("🚀 Mobile/Desktop-Safe HandleBuyTokens");
+      console.log("added in provided to check");
   
       if (!isConnected || !address)
         return alert("Please connect your wallet first");

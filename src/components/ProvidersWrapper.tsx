@@ -39,9 +39,12 @@ const config = getDefaultConfig({
       groupName: "Popular",
       wallets: [
         metaMaskWallet,
-        // Only include WalletConnect when a valid projectId is provided
-        ...(projectId && projectId !== "YOUR_PROJECT_ID" ? [walletConnectWallet] : []),
-        baseAccount
+        // Only enable WalletConnect on desktop browsers — not on mobile MetaMask
+        ...(typeof window !== "undefined" && !/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          ? [walletConnectWallet]
+          : []
+        ),
+        baseAccount,
       ],
     },
   ],
