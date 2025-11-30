@@ -520,9 +520,9 @@ const PresaleForm = () => {
           console.warn("Gas estimation failed, using default:", e);
         }
   
-        // Mobile MetaMask fix → data must be hex string
+        // Mobile MetaMask fix → ensure data is a 0x-hex string
         const rawData = populated.data as any;
-        const dataHex = hexlify(rawData) as `0x${string}`;
+        const dataHex = (typeof rawData === "string" ? rawData : hexlify(rawData)) as `0x${string}`;
   
         const txHash = await walletClient.sendTransaction({
           to: populated.to! as `0x${string}`,

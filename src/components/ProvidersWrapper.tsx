@@ -1,45 +1,43 @@
 import {
-  darkTheme,
   RainbowKitProvider,
+  darkTheme,
   connectorsForWallets,
 } from "@rainbow-me/rainbowkit";
 
 import {
   metaMaskWallet,
   walletConnectWallet,
-  baseAccount
+  baseAccount,
 } from "@rainbow-me/rainbowkit/wallets";
 
-import {
-  WagmiProvider,
-  createConfig,
-} from "wagmi";
-
+import { WagmiProvider, createConfig } from "wagmi";
 import { mainnet } from "wagmi/chains";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
-const queryClient = new QueryClient();
-
-const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
-
-// Detect mobile browser
 const isMobile =
   typeof navigator !== "undefined" &&
   /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
+const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
+
 // ----------------------------
-//  FIXED CONNECTOR LIST
+// RainbowKit v1 wallet groups
+// (wallets ARE NOT FUNCTIONS anymore)
 // ----------------------------
 const connectors = connectorsForWallets(
   [
     {
       groupName: "Recommended",
       wallets: [
-        metaMaskWallet,
-        // Allow WalletConnect only on desktop (NOT mobile MetaMask app)
-        ...(isMobile ? [] : [walletConnectWallet]),
+        metaMaskWallet, // NOT called as a function
+
+        // allow WalletConnect ONLY on desktop
+        ...(!isMobile && projectId
+          ? [walletConnectWallet]
+          : []),
+
         baseAccount,
       ],
     },
@@ -51,16 +49,19 @@ const connectors = connectorsForWallets(
 );
 
 // ----------------------------
-//  WAGMI CONFIG
+// Wagmi config
 // ----------------------------
 const config = createConfig({
   chains: [mainnet],
   transports: {
-    [mainnet.id]: http(), // REQUIRED
+    [mainnet.id]: http(),
   },
   connectors,
   ssr: false,
 });
+
+// React Query
+const queryClient = new QueryClient();
 
 export default function ProvidersWrapper({ children }: PropsWithChildren) {
   return (
