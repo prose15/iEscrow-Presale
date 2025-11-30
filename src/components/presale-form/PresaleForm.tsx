@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import axios from "axios";
-import { BrowserProvider, Contract, JsonRpcProvider, formatUnits, parseEther, parseUnits } from "ethers";
+import { BrowserProvider, Contract, JsonRpcProvider, formatUnits, parseEther, parseUnits, hexlify, isHexString, Signature } from "ethers";
 
 import CurrencyInput from "./CurrencyInput";
 import CurrencyRadio from "./CurrencyRadio";
@@ -80,6 +80,45 @@ const TOKEN_PRICE_ABI = ["function getTokenPrice(address token) view returns (ui
 const SUPPLY_ABI = ["function totalTokensMinted() view returns (uint256)", "function maxTokensToMint() view returns (uint256)", "function canClaim() view returns (bool)", "function presaleRate() view returns (uint256)", "function gasBuffer() view returns (uint256)"];
 const AUTHORIZER_ABI = ["function getNonce(address user) view returns (uint256)"];
 const ERC20_ABI = ["function approve(address spender, uint256 amount) external returns (bool)", "function allowance(address owner, address spender) external view returns (uint256)", "function balanceOf(address account) external view returns (uint256)", "function decimals() external view returns (uint8)"];
+
+// Normalize different signature shapes into 0x-prefixed hex string acceptable by ethers (BytesLike)
+function normalizeSignature(input: unknown): `0x${string}` {
+  // Already a valid 0x hex string
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    const prefixed = trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+    if (isHexString(prefixed)) {
+      return prefixed as `0x${string}`;
+    }
+    // Try to parse base64-encoded signatures (rare, but defensive)
+    try {
+      // atob may not exist in all envs; fallback safe path
+      const b64 = trimmed.replace(/[\r\n\s]/g, "");
+      const binary = typeof atob === "function" ? atob(b64) : "";
+      if (binary) {
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return hexlify(bytes) as `0x${string}`;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Node Buffer-esque JSON shape: { type: 'Buffer', data: number[] }
+  if (input && typeof input === "object" && "type" in (input as any) && (input as any).type === "Buffer" && Array.isArray((input as any).data)) {
+    const arr: number[] = (input as any).data;
+    return hexlify(new Uint8Array(arr)) as `0x${string}`;
+  }
+
+  // r/s/v shape or anything Signature.from can understand
+  try {
+    const sig = Signature.from(input as any);
+    return sig.serialized as `0x${string}`;
+  } catch {
+    // fallthrough
+  }
+
+  throw new Error("Invalid signature format (expected hex string, Buffer, or r/s/v object).");
+}
 
 const PresaleForm = () => {
   const [loading, setLoading] = useState(false);
@@ -424,6 +463,9 @@ const PresaleForm = () => {
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
       const { voucher, signature } = data;
+
+      // Ensure signature is valid BytesLike for ethers
+      const sigHex = normalizeSignature(signature);
   
       // ---- Contract Interaction ----
       const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
@@ -454,7 +496,7 @@ const PresaleForm = () => {
         const populatedTx = await presaleContract.buyWithNativeVoucher.populateTransaction(
           address,
           voucherStruct,
-          signature,
+          sigHex,
           { value: ethAmount }
         );
         
@@ -526,7 +568,7 @@ const PresaleForm = () => {
           tokenAmount,
           address,
           voucherStruct,
-          signature
+          sigHex
         );
       }
   
