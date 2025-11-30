@@ -383,7 +383,7 @@ const PresaleForm = () => {
 
   const handleBuyTokens = async () => {
     try {
-      console.log("added in provided to check");
+      console.log("⏳ Starting buy...");
   
       if (!isConnected || !address)
         return alert("Please connect your wallet first");
@@ -399,7 +399,6 @@ const PresaleForm = () => {
   
       setLoading(true);
   
-      // -------- WALLET CLIENT CHECK --------
       if (!walletClient)
         throw new Error("Wallet not connected");
   
@@ -407,97 +406,110 @@ const PresaleForm = () => {
       const signer = await provider.getSigner();
   
       const isNative = selectedCurrencyData.isNative;
-      const paymentToken = isNative
-        ? NATIVE_ADDRESS
-        : selectedCurrencyData.address;
+      const paymentToken = isNative ? NATIVE_ADDRESS : selectedCurrencyData.address;
   
-      // -------- FETCH NONCE --------
+      // ------------------------------
+      // FETCH NONCE (string)
+      // ------------------------------
       const authAddr = import.meta.env.VITE_AUTHORIZER_CONTRACT_ADDRESS;
       if (!authAddr) throw new Error("Authorizer address missing");
   
       const authorizer = new Contract(authAddr, AUTHORIZER_ABI, provider);
-      const nonce = (await authorizer.getNonce(address)).toString();
+      const nonceStr = (await authorizer.getNonce(address)).toString();
   
-      // -------- FETCH DECIMALS --------
+      // ------------------------------
+      // DECIMALS LOGIC
+      // ------------------------------
       let decimals = selectedCurrencyData.decimals;
       if (!isNative) {
         try {
           const decContract = new Contract(paymentToken, ERC20_ABI, provider);
           decimals = Number(await decContract.decimals());
-        } catch {
-          console.warn("⚠ Decimals fetch failed. Using default:", decimals);
-        }
+        } catch {}
       }
   
-      // -------- PREPARE VOUCHER REQUEST --------
       const apiUrl =
-        import.meta.env.VITE_API_URL ||
-        "https://iescrow-backend.onrender.com";
+        import.meta.env.VITE_API_URL || "https://iescrow-backend.onrender.com";
   
-      // Backend expects 8 decimals on major tokens
-      const force8 =
-        ["USDT", "USDC", "WBTC", "ETH"].includes(selectedCurrencyData.symbol);
+      const force8 = ["USDT", "USDC", "WBTC", "ETH"].includes(selectedCurrencyData.symbol);
       const apiDecimals = force8 ? 8 : decimals;
   
       // USD calculation
       let usdAmountForVoucher;
       if (isNative && selectedCurrencyData.symbol === "ETH") {
-        const effective = Math.max(
+        const eff = Math.max(
           0,
           amount - (gasBufferAmount > 0 ? gasBufferAmount : 0.0005)
         );
-        usdAmountForVoucher = effective * selectedCurrencyData.priceUsd;
+        usdAmountForVoucher = eff * selectedCurrencyData.priceUsd;
       } else {
         usdAmountForVoucher = amount * selectedCurrencyData.priceUsd;
       }
   
+      // ------------------------------
+      // REQUEST VOUCHER
+      // ------------------------------
       const payload = {
         buyer: address,
         beneficiary: address,
         paymentToken,
         usdAmount: String(usdAmountForVoucher),
         userId: address,
-        usernonce: nonce,
+        usernonce: nonceStr,
         decimals: apiDecimals,
       };
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, payload);
+  
       const { voucher, signature } = data;
   
-      // -------- NORMALIZE SIGNATURE --------
+      // ------------------------------
+      // FIX SIGNATURE (Mobile MUST have 0x + length 132)
+      // ------------------------------
       let sigHex: `0x${string}`;
+  
       try {
         sigHex = Signature.from(signature).serialized as `0x${string}`;
       } catch {
         sigHex = normalizeSignature(signature);
       }
   
-      // -------- PREPARE CONTRACT CALL --------
-      const presale = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
+      if (!sigHex.startsWith("0x")) {
+        sigHex = ("0x" + sigHex) as `0x${string}`;
+      }
+      if (sigHex.length !== 132) {
+        throw new Error(`Invalid signature length (${sigHex.length})`);
+      }
   
-      const voucherStruct = [
-        voucher.buyer,
-        voucher.beneficiary,
-        voucher.paymentToken,
-        voucher.usdLimit,
-        voucher.nonce,
-        voucher.deadline,
-        voucher.presale,
-      ];
+      // ------------------------------
+      // SAFE VOUCHER (Mobile strict mode)
+      // ------------------------------
+      const safeVoucher = {
+        buyer: voucher.buyer as `0x${string}`,
+        beneficiary: voucher.beneficiary as `0x${string}`,
+        paymentToken: voucher.paymentToken as `0x${string}`,
+        usdLimit: BigInt(voucher.usdLimit),
+        nonce: BigInt(voucher.nonce),
+        deadline: BigInt(voucher.deadline),
+        presale: voucher.presale as `0x${string}`,
+      };
+  
+      const voucherStruct = Object.values(safeVoucher);
+  
+      const presale = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
   
       let tx;
   
       // ============================================================
-      //                    NATIVE TOKEN BLOCK (ETH)
+      // NATIVE (ETH)
       // ============================================================
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
   
         const balance = await provider.getBalance(address);
         if (balance < ethAmount)
-          throw new Error(`Insufficient ETH balance.`);
+          throw new Error("Insufficient ETH balance");
   
-        // Populate transaction
         const populated = await presale.buyWithNativeVoucher.populateTransaction(
           address,
           voucherStruct,
@@ -505,7 +517,6 @@ const PresaleForm = () => {
           { value: ethAmount }
         );
   
-        // Estimate gas safely
         let gasLimit: bigint = 300000n;
         try {
           const est = await provider.estimateGas({
@@ -516,36 +527,25 @@ const PresaleForm = () => {
           });
           gasLimit = (est * 120n) / 100n;
           if (gasLimit > 500000n) gasLimit = 500000n;
-        } catch (e) {
-          console.warn("Gas estimation failed, using default:", e);
-        }
+        } catch (e) {}
   
-        // Mobile MetaMask fix → ensure data is a 0x-hex string
-        const rawData = populated.data as any;
-        const dataHex = (typeof rawData === "string" ? rawData : hexlify(rawData)) as `0x${string}`;
+        const dataHex =
+          typeof populated.data === "string"
+            ? (populated.data as `0x${string}`)
+            : (hexlify(populated.data) as `0x${string}`);
   
         const txHash = await walletClient.sendTransaction({
           to: populated.to! as `0x${string}`,
           data: dataHex,
-          value: ethAmount, // MUST be bigint
-          gas: gasLimit, // MUST be bigint
+          value: ethAmount,
+          gas: gasLimit,
         });
   
-        tx = {
-          hash: txHash,
-          wait: async () => {
-            let receipt;
-            while (!receipt) {
-              receipt = await provider.getTransactionReceipt(txHash);
-              await new Promise(r => setTimeout(r, 1000));
-            }
-            return receipt;
-          },
-        };
+        tx = { hash: txHash };
       }
   
       // ============================================================
-      //                     ERC20 TOKEN BLOCK
+      // ERC20 TOKEN
       // ============================================================
       else {
         const tokenContract = new Contract(paymentToken, ERC20_ABI, signer);
@@ -573,23 +573,16 @@ const PresaleForm = () => {
         );
       }
   
-      // SUCCESS
       alert(`Purchase successful! TX: ${tx.hash}`);
       refreshEscrowBalance();
     } catch (err: any) {
       console.error("❌ Buy Error:", err);
-  
-      let msg = err?.response?.data?.error
-        || err.reason
-        || err.shortMessage
-        || err.message
-        || "Transaction failed";
-  
-      alert(msg);
+      alert(err.message || "Transaction failed");
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleClaimTokens = async () => {
     if (!isConnected || !address || !canClaim || !walletClient) return alert("Cannot claim");
