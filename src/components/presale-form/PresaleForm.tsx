@@ -383,7 +383,7 @@ const PresaleForm = () => {
 
   const handleBuyTokens = async () => {
     try {
-      console.log("⏳ Starting buy...");
+      console.log("⏳ Starting buy 2...");
   
       if (!isConnected || !address)
         return alert("Please connect your wallet first");
@@ -408,34 +408,35 @@ const PresaleForm = () => {
       const isNative = selectedCurrencyData.isNative;
       const paymentToken = isNative ? NATIVE_ADDRESS : selectedCurrencyData.address;
   
-      // ------------------------------
-      // FETCH NONCE (string)
-      // ------------------------------
+      // -------- FETCH NONCE --------
       const authAddr = import.meta.env.VITE_AUTHORIZER_CONTRACT_ADDRESS;
       if (!authAddr) throw new Error("Authorizer address missing");
   
       const authorizer = new Contract(authAddr, AUTHORIZER_ABI, provider);
       const nonceStr = (await authorizer.getNonce(address)).toString();
   
-      // ------------------------------
-      // DECIMALS LOGIC
-      // ------------------------------
+      // -------- FETCH DECIMALS --------
       let decimals = selectedCurrencyData.decimals;
       if (!isNative) {
         try {
           const decContract = new Contract(paymentToken, ERC20_ABI, provider);
           decimals = Number(await decContract.decimals());
-        } catch {}
+        } catch {
+          console.warn("⚠ Decimals fetch failed. Using default:", decimals);
+        }
       }
   
+      // -------- PREPARE VOUCHER REQUEST --------
       const apiUrl =
-        import.meta.env.VITE_API_URL || "https://iescrow-backend.onrender.com";
+        import.meta.env.VITE_API_URL ||
+        "https://iescrow-backend.onrender.com";
   
-      const force8 = ["USDT", "USDC", "WBTC", "ETH"].includes(selectedCurrencyData.symbol);
+      const force8 =
+        ["USDT", "USDC", "WBTC", "ETH"].includes(selectedCurrencyData.symbol);
       const apiDecimals = force8 ? 8 : decimals;
   
       // USD calculation
-      let usdAmountForVoucher;
+      let usdAmountForVoucher: number;
       if (isNative && selectedCurrencyData.symbol === "ETH") {
         const eff = Math.max(
           0,
@@ -446,9 +447,6 @@ const PresaleForm = () => {
         usdAmountForVoucher = amount * selectedCurrencyData.priceUsd;
       }
   
-      // ------------------------------
-      // REQUEST VOUCHER
-      // ------------------------------
       const payload = {
         buyer: address,
         beneficiary: address,
@@ -460,14 +458,10 @@ const PresaleForm = () => {
       };
   
       const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, payload);
-  
       const { voucher, signature } = data;
   
-      // ------------------------------
-      // FIX SIGNATURE (Mobile MUST have 0x + length 132)
-      // ------------------------------
+      // -------- NORMALIZE SIGNATURE --------
       let sigHex: `0x${string}`;
-  
       try {
         sigHex = Signature.from(signature).serialized as `0x${string}`;
       } catch {
@@ -481,9 +475,7 @@ const PresaleForm = () => {
         throw new Error(`Invalid signature length (${sigHex.length})`);
       }
   
-      // ------------------------------
-      // SAFE VOUCHER (Mobile strict mode)
-      // ------------------------------
+      // -------- SAFE VOUCHER STRUCT --------
       const safeVoucher = {
         buyer: voucher.buyer as `0x${string}`,
         beneficiary: voucher.beneficiary as `0x${string}`,
@@ -501,51 +493,29 @@ const PresaleForm = () => {
       let tx;
   
       // ============================================================
-      // NATIVE (ETH)
+      // NATIVE (ETH) BRANCH – simplified for mobile
       // ============================================================
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
   
         const balance = await provider.getBalance(address);
-        if (balance < ethAmount)
-          throw new Error("Insufficient ETH balance");
+        if (balance < ethAmount) {
+          throw new Error("Insufficient ETH balance.");
+        }
   
-        const populated = await presale.buyWithNativeVoucher.populateTransaction(
+        // 🚨 IMPORTANT CHANGE:
+        // Call the contract method directly with signer.
+        // Let ethers + MetaMask handle value / gas / encoding.
+        tx = await presale.buyWithNativeVoucher(
           address,
           voucherStruct,
           sigHex,
           { value: ethAmount }
         );
-  
-        let gasLimit: bigint = 300000n;
-        try {
-          const est = await provider.estimateGas({
-            to: populated.to,
-            from: address,
-            data: populated.data,
-            value: ethAmount,
-          });
-          gasLimit = (est * 120n) / 100n;
-          if (gasLimit > 500000n) gasLimit = 500000n;
-        } catch (e) {}
-  
-        const dataHex =
-          typeof populated.data === "string"
-            ? (populated.data as `0x${string}`)
-            : (hexlify(populated.data) as `0x${string}`);
-  
-        const txHash = await walletClient.sendTransaction({
-          to: populated.to! as `0x${string}`,
-          data: dataHex,
-          value: ethAmount,
-          gas: gasLimit,
-        });
-  
-        tx = { hash: txHash };
       }
   
       // ============================================================
-      // ERC20 TOKEN
+      // ERC20 TOKEN BRANCH (unchanged)
       // ============================================================
       else {
         const tokenContract = new Contract(paymentToken, ERC20_ABI, signer);
@@ -577,7 +547,13 @@ const PresaleForm = () => {
       refreshEscrowBalance();
     } catch (err: any) {
       console.error("❌ Buy Error:", err);
-      alert(err.message || "Transaction failed");
+      const msg =
+        err?.response?.data?.error ||
+        err.reason ||
+        err.shortMessage ||
+        err.message ||
+        "Transaction failed";
+      alert(msg);
     } finally {
       setLoading(false);
     }
