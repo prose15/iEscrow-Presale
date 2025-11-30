@@ -383,24 +383,33 @@ const PresaleForm = () => {
 
   const handleBuyTokens = async () => {
     try {
-      console.log("⏳ Starting buy 2...");
+      console.log("handleBuyTokens: start");
   
-      if (!isConnected || !address)
-        return alert("Please connect your wallet first");
+      if (!isConnected || !address) {
+        alert("Please connect your wallet first");
+        return;
+      }
   
-      if (!amount || amount <= 0)
-        return alert("Please enter a valid amount");
+      if (!amount || amount <= 0) {
+        alert("Please enter a valid amount");
+        return;
+      }
   
-      if (!isVerified)
-        return alert("Please complete verification first");
+      if (!isVerified) {
+        alert("Please complete verification first");
+        return;
+      }
   
-      if (tokenAmount > remainingTokens)
-        return alert("You exceeded max token purchase limit");
+      if (tokenAmount > remainingTokens) {
+        alert("You exceeded max token purchase limit");
+        return;
+      }
   
       setLoading(true);
   
-      if (!walletClient)
+      if (!walletClient) {
         throw new Error("Wallet not connected");
+      }
   
       const provider = new BrowserProvider(walletClient);
       const signer = await provider.getSigner();
@@ -438,11 +447,11 @@ const PresaleForm = () => {
       // USD calculation
       let usdAmountForVoucher: number;
       if (isNative && selectedCurrencyData.symbol === "ETH") {
-        const eff = Math.max(
+        const effective = Math.max(
           0,
           amount - (gasBufferAmount > 0 ? gasBufferAmount : 0.0005)
         );
-        usdAmountForVoucher = eff * selectedCurrencyData.priceUsd;
+        usdAmountForVoucher = effective * selectedCurrencyData.priceUsd;
       } else {
         usdAmountForVoucher = amount * selectedCurrencyData.priceUsd;
       }
@@ -475,25 +484,23 @@ const PresaleForm = () => {
         throw new Error(`Invalid signature length (${sigHex.length})`);
       }
   
-      // -------- SAFE VOUCHER STRUCT --------
-      const safeVoucher = {
-        buyer: voucher.buyer as `0x${string}`,
-        beneficiary: voucher.beneficiary as `0x${string}`,
-        paymentToken: voucher.paymentToken as `0x${string}`,
-        usdLimit: BigInt(voucher.usdLimit),
-        nonce: BigInt(voucher.nonce),
-        deadline: BigInt(voucher.deadline),
-        presale: voucher.presale as `0x${string}`,
-      };
-  
-      const voucherStruct = Object.values(safeVoucher);
+      // -------- SAFE VOUCHER STRUCT (use BigInt for uint256) --------
+      const voucherStruct = [
+        voucher.buyer as `0x${string}`,
+        voucher.beneficiary as `0x${string}`,
+        voucher.paymentToken as `0x${string}`,
+        BigInt(voucher.usdLimit),
+        BigInt(voucher.nonce),
+        BigInt(voucher.deadline),
+        voucher.presale as `0x${string}`,
+      ];
   
       const presale = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
   
       let tx;
   
       // ============================================================
-      // NATIVE (ETH) BRANCH – simplified for mobile
+      // NATIVE (ETH) BRANCH – use signer.call directly
       // ============================================================
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
@@ -503,9 +510,6 @@ const PresaleForm = () => {
           throw new Error("Insufficient ETH balance.");
         }
   
-        // 🚨 IMPORTANT CHANGE:
-        // Call the contract method directly with signer.
-        // Let ethers + MetaMask handle value / gas / encoding.
         tx = await presale.buyWithNativeVoucher(
           address,
           voucherStruct,
@@ -515,7 +519,7 @@ const PresaleForm = () => {
       }
   
       // ============================================================
-      // ERC20 TOKEN BRANCH (unchanged)
+      // ERC20 TOKEN BRANCH
       // ============================================================
       else {
         const tokenContract = new Contract(paymentToken, ERC20_ABI, signer);
@@ -547,12 +551,14 @@ const PresaleForm = () => {
       refreshEscrowBalance();
     } catch (err: any) {
       console.error("❌ Buy Error:", err);
+  
       const msg =
         err?.response?.data?.error ||
         err.reason ||
         err.shortMessage ||
         err.message ||
         "Transaction failed";
+  
       alert(msg);
     } finally {
       setLoading(false);

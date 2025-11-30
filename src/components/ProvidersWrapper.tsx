@@ -20,7 +20,8 @@ const isMobile =
   typeof navigator !== "undefined" &&
   /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
+const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || "0ec065c36773e587f7055999246c1ffe";
+console.log(projectId);
 
 // ----------------------------
 // RainbowKit v1 wallet groups

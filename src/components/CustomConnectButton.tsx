@@ -8,7 +8,8 @@ const CustomConnectButton = () => {
   const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const hasInjected = typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
   const wcProjectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
-  const hasValidWalletConnect = Boolean(wcProjectId && wcProjectId !== 'YOUR_PROJECT_ID');
+  console.log("wcProjectId", wcProjectId);
+  const hasValidWalletConnect = Boolean(wcProjectId && wcProjectId !== '0ec065c36773e587f7055999246c1ffe');
 
   // Deep-link into MetaMask mobile app to open the dapp directly
   const openMetaMaskDeeplink = () => {
