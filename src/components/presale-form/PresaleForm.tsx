@@ -521,10 +521,11 @@ const PresaleForm = () => {
         }
   
         // Mobile MetaMask fix → data must be hex string
-        const dataHex = hexlify(populated.data as any);
+        const rawData = populated.data as any;
+        const dataHex = hexlify(rawData) as `0x${string}`;
   
         const txHash = await walletClient.sendTransaction({
-          to: populated.to!,
+          to: populated.to! as `0x${string}`,
           data: dataHex,
           value: ethAmount, // MUST be bigint
           gas: gasLimit, // MUST be bigint
