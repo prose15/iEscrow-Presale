@@ -382,99 +382,98 @@ const PresaleForm = () => {
   // };
 
   const handleBuyTokens = async () => {
-    console.log("mobileFix");
-    if (!isConnected || !address) return alert("Please connect your wallet first");
-    if (!amount || amount <= 0) return alert("Please enter a valid amount to purchase");
-    if (!isVerified) return alert("Please complete verification first");
-
-    // 🚫 NEW: Prevent purchase beyond remaining supply
-    if (tokenAmount > remainingTokens) {
-      return alert("You have exceeded the maximum number of tokens allowed for purchase.");
-    }  
-  
     try {
+      console.log("🚀 Mobile/Desktop-Safe HandleBuyTokens");
+  
+      if (!isConnected || !address)
+        return alert("Please connect your wallet first");
+  
+      if (!amount || amount <= 0)
+        return alert("Please enter a valid amount");
+  
+      if (!isVerified)
+        return alert("Please complete verification first");
+  
+      if (tokenAmount > remainingTokens)
+        return alert("You exceeded max token purchase limit");
+  
       setLoading(true);
   
-      if (!walletClient) throw new Error("Wallet not connected");
+      // -------- WALLET CLIENT CHECK --------
+      if (!walletClient)
+        throw new Error("Wallet not connected");
   
       const provider = new BrowserProvider(walletClient);
       const signer = await provider.getSigner();
   
       const isNative = selectedCurrencyData.isNative;
-      const paymentToken = isNative ? NATIVE_ADDRESS : selectedCurrencyData.address;
+      const paymentToken = isNative
+        ? NATIVE_ADDRESS
+        : selectedCurrencyData.address;
   
-  
-      // ---- Fetch nonce ----
+      // -------- FETCH NONCE --------
       const authAddr = import.meta.env.VITE_AUTHORIZER_CONTRACT_ADDRESS;
       if (!authAddr) throw new Error("Authorizer address missing");
   
       const authorizer = new Contract(authAddr, AUTHORIZER_ABI, provider);
-      let nonce = await authorizer.getNonce(address);
-      nonce = nonce.toString();
+      const nonce = (await authorizer.getNonce(address)).toString();
   
-      // ---- Get Decimals ----
+      // -------- FETCH DECIMALS --------
       let decimals = selectedCurrencyData.decimals;
       if (!isNative) {
         try {
           const decContract = new Contract(paymentToken, ERC20_ABI, provider);
           decimals = Number(await decContract.decimals());
         } catch {
-          console.warn("⚠️ Failed to fetch decimals. Using fallback:", decimals);
+          console.warn("⚠ Decimals fetch failed. Using default:", decimals);
         }
       }
   
-      // ---- Request Voucher From API ----
+      // -------- PREPARE VOUCHER REQUEST --------
       const apiUrl =
         import.meta.env.VITE_API_URL ||
         "https://iescrow-backend.onrender.com";
-
-      // Override decimals for USDT / USDC / WBTC / ETH (backend expects 8 decimals)
-      let apiDecimals = decimals;
-
-      if (selectedCurrencyData.symbol === "USDT" || selectedCurrencyData.symbol === "USDC" || selectedCurrencyData.symbol === "WBTC" || selectedCurrencyData.symbol === "ETH") {
-        apiDecimals = 8;
-      }
-
-      // Calculate USD amount for voucher
-      // CRITICAL: Backend needs actual USD value, not raw token amount
-      // Contract calculates: usdAmount = (paymentAmount * priceUSD) / (10 ** decimals)
-      // We must send the USD value so backend can set voucher.usdLimit correctly (in 8 decimals)
-      let usdAmountForVoucher: number;
-
+  
+      // Backend expects 8 decimals on major tokens
+      const force8 =
+        ["USDT", "USDC", "WBTC", "ETH"].includes(selectedCurrencyData.symbol);
+      const apiDecimals = force8 ? 8 : decimals;
+  
+      // USD calculation
+      let usdAmountForVoucher;
       if (isNative && selectedCurrencyData.symbol === "ETH") {
-        // For ETH: Contract applies gas buffer, so voucher USD should match
-        // Frontend already accounts for gas buffer in "You will receive" calculation
-        const effectiveAmount = Math.max(0, amount - (gasBufferAmount > 0 ? gasBufferAmount : 0.0005));
-        usdAmountForVoucher = effectiveAmount * selectedCurrencyData.priceUsd;
+        const effective = Math.max(
+          0,
+          amount - (gasBufferAmount > 0 ? gasBufferAmount : 0.0005)
+        );
+        usdAmountForVoucher = effective * selectedCurrencyData.priceUsd;
       } else {
-        // For tokens: Use full amount (gas is paid separately in ETH)
-        // Convert token amount to USD: amount * priceUsd
         usdAmountForVoucher = amount * selectedCurrencyData.priceUsd;
       }
-
-      const requestPayload = {
+  
+      const payload = {
         buyer: address,
         beneficiary: address,
         paymentToken,
-        usdAmount: String(usdAmountForVoucher), // ✅ Send USD value, not token amount
+        usdAmount: String(usdAmountForVoucher),
         userId: address,
-        usernonce: String(nonce),
-        decimals: Number(apiDecimals),
+        usernonce: nonce,
+        decimals: apiDecimals,
       };
   
-      const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, requestPayload);
+      const { data } = await axios.post(`${apiUrl}/api/presale/voucher`, payload);
       const { voucher, signature } = data;
-
-      // Canonicalize signature to a 0x-hex serialized signature (handles strings, r/s/v, Buffer-like)
+  
+      // -------- NORMALIZE SIGNATURE --------
       let sigHex: `0x${string}`;
       try {
-        sigHex = Signature.from(signature as any).serialized as `0x${string}`;
+        sigHex = Signature.from(signature).serialized as `0x${string}`;
       } catch {
         sigHex = normalizeSignature(signature);
       }
   
-      // ---- Contract Interaction ----
-      const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
+      // -------- PREPARE CONTRACT CALL --------
+      const presale = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, signer);
   
       const voucherStruct = [
         voucher.buyer,
@@ -485,94 +484,86 @@ const PresaleForm = () => {
         voucher.deadline,
         voucher.presale,
       ];
-
   
       let tx;
   
+      // ============================================================
+      //                    NATIVE TOKEN BLOCK (ETH)
+      // ============================================================
       if (isNative) {
         const ethAmount = parseEther(amount.toString());
-        
-        // Simple balance check
+  
         const balance = await provider.getBalance(address);
-        if (balance < ethAmount) {
-          throw new Error(`Insufficient ETH balance. You need ${amount} ETH but only have ${formatUnits(balance, 18)} ETH.`);
-        }
-        
-        // Build transaction data
-        const populatedTx = await presaleContract.buyWithNativeVoucher.populateTransaction(
+        if (balance < ethAmount)
+          throw new Error(`Insufficient ETH balance.`);
+  
+        // Populate transaction
+        const populated = await presale.buyWithNativeVoucher.populateTransaction(
           address,
           voucherStruct,
           sigHex,
           { value: ethAmount }
         );
-        
-        // Use walletClient directly to send transaction - this bypasses ethers.js gas estimation
-        // and lets MetaMask handle everything, including showing the popup
-        if (!walletClient) {
-          throw new Error("Wallet not connected");
-        }
-        
-        // Try to estimate gas first, but use a reasonable default if estimation fails
-        // This prevents MetaMask from using inflated gas estimates
-        let gasLimit: bigint = 300000n; // Safe default for contract calls with signature verification
-        
+  
+        // Estimate gas safely
+        let gasLimit: bigint = 300000n;
         try {
-          // Try to estimate gas using the provider
-          const estimatedGas = await provider.estimateGas({
-            to: populatedTx.to!,
+          const est = await provider.estimateGas({
+            to: populated.to,
             from: address,
-            data: populatedTx.data,
-            value: ethAmount
+            data: populated.data,
+            value: ethAmount,
           });
-          // Add 20% buffer to estimated gas for safety
-          gasLimit = (estimatedGas * 120n) / 100n;
-          
-          // Cap at reasonable maximum (500k) to prevent extremely high estimates
-          if (gasLimit > 500000n) {
-            console.warn(`Gas estimate (${gasLimit.toString()}) seems too high, capping at 500k`);
-            gasLimit = 500000n;
-          }
-        } catch (gasErr) {
-          // If estimation fails, use default - this is fine, MetaMask will handle it
-          console.warn("Gas estimation failed, using default 300k:", gasErr);
+          gasLimit = (est * 120n) / 100n;
+          if (gasLimit > 500000n) gasLimit = 500000n;
+        } catch (e) {
+          console.warn("Gas estimation failed, using default:", e);
         }
-        
-        // Send transaction with reasonable gas limit
-        // Ensure data is hex string for WalletClient
-        const dataHex = hexlify(populatedTx.data as any) as `0x${string}`;
-
+  
+        // Mobile MetaMask fix → data must be hex string
+        const dataHex = hexlify(populated.data as any);
+  
         const txHash = await walletClient.sendTransaction({
-          to: populatedTx.to as `0x${string}`,
+          to: populated.to!,
           data: dataHex,
-          value: ethAmount,
-          gas: gasLimit, // Use estimated or default gas limit
+          value: ethAmount, // MUST be bigint
+          gas: gasLimit, // MUST be bigint
         });
-        
-        // Create a transaction response object for consistency
+  
         tx = {
           hash: txHash,
           wait: async () => {
-            const receipt = await provider.getTransactionReceipt(txHash);
-            if (!receipt) {
-              throw new Error("Transaction receipt not found");
+            let receipt;
+            while (!receipt) {
+              receipt = await provider.getTransactionReceipt(txHash);
+              await new Promise(r => setTimeout(r, 1000));
             }
             return receipt;
-          }
-        } as any;
-      } else {
-
-        // const tokenContract = new Contract("0xd9de332c023Dc4372fAE306C3779e0659f0f8F6B", ERC20_ABI, signer);
+          },
+        };
+      }
+  
+      // ============================================================
+      //                     ERC20 TOKEN BLOCK
+      // ============================================================
+      else {
         const tokenContract = new Contract(paymentToken, ERC20_ABI, signer);
         const tokenAmount = parseUnits(amount.toString(), decimals);
   
-        const allowance = await tokenContract.allowance(address, PRESALE_CONTRACT_ADDRESS);
+        const allowance = await tokenContract.allowance(
+          address,
+          PRESALE_CONTRACT_ADDRESS
+        );
   
         if (allowance < tokenAmount) {
-          const approveTx = await tokenContract.approve(PRESALE_CONTRACT_ADDRESS, tokenAmount);
+          const approveTx = await tokenContract.approve(
+            PRESALE_CONTRACT_ADDRESS,
+            tokenAmount
+          );
           await approveTx.wait();
         }
   
-        tx = await presaleContract.buyWithTokenVoucher(
+        tx = await presale.buyWithTokenVoucher(
           paymentToken,
           tokenAmount,
           address,
@@ -581,65 +572,24 @@ const PresaleForm = () => {
         );
       }
   
-      // const receipt = await tx.wait();
-  
+      // SUCCESS
       alert(`Purchase successful! TX: ${tx.hash}`);
       refreshEscrowBalance();
     } catch (err: any) {
       console.error("❌ Buy Error:", err);
-      
-      // Better error message extraction
-      let errorMessage = "Failed to buy tokens";
-      
-      if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      } else if (err.reason || err.shortMessage) {
-        errorMessage = err.reason || err.shortMessage;
-      } else if (err.message) {
-        errorMessage = err.message;
-      } else if (err.data && err.data !== "0x" && err.data.length >= 10) {
-        // Try to decode revert reason from error data
-        try {
-          const errorSelector = err.data.slice(0, 10);
-          // Check if it's a known error selector first
-          const commonErrors: Record<string, string> = {
-            "0x08c379a0": "Error occurred (string error)",
-            "0x4e487b71": "Panic occurred",
-            "0x72567b64": "Invalid voucher or signature", // Common presale error
-          };
-          
-          if (commonErrors[errorSelector]) {
-            errorMessage = `Transaction failed: ${commonErrors[errorSelector]}`;
-          } else {
-            // Try to decode using contract interface if available
-            try {
-              // Recreate contract interface for error decoding
-              const tempProvider = getRpcProvider();
-              const tempContract = new Contract(PRESALE_CONTRACT_ADDRESS, PRESALE_ABI, tempProvider);
-              const decodedError = tempContract.interface.parseError(err.data);
-              if (decodedError) {
-                errorMessage = `Transaction failed: ${decodedError.name}`;
-              } else {
-                errorMessage = `Transaction failed: Contract reverted (error: ${errorSelector})`;
-              }
-            } catch {
-              errorMessage = `Transaction failed: Contract reverted (error: ${errorSelector})`;
-            }
-          }
-        } catch {
-          errorMessage = "Transaction failed. Please check: voucher validity, deadline, and contract state.";
-        }
-      } else if (err.code === "CALL_EXCEPTION" || err.code === "UNPREDICTABLE_GAS_LIMIT") {
-        errorMessage = "Transaction would fail. Please check: voucher validity, deadline, sufficient balance, and contract state.";
-      } else {
-        errorMessage = "Transaction failed. Please check your balance and try again.";
-      }
-      
-      alert(errorMessage);
+  
+      let msg = err?.response?.data?.error
+        || err.reason
+        || err.shortMessage
+        || err.message
+        || "Transaction failed";
+  
+      alert(msg);
     } finally {
       setLoading(false);
     }
   };
+  
   
 
   const handleClaimTokens = async () => {
