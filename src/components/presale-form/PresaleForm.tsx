@@ -73,8 +73,8 @@ export type Currency = {
 };
 
 const PRESALE_ABI = [
-  "function buyWithNativeVoucher(address beneficiary, tuple(address buyer, address beneficiary, address paymentToken, uint256 usdLimit, uint256 nonce, uint256 deadline, address presale) voucher, bytes signature) external payable",
-  "function buyWithTokenVoucher(address token, uint256 amount, address beneficiary, tuple(address buyer, address beneficiary, address paymentToken, uint256 usdLimit, uint256 nonce, uint256 deadline, address presale) voucher, bytes signature) external"
+  "function buyWithNativeVoucher(address beneficiary, (address buyer, address beneficiary, address paymentToken, uint256 usdLimit, uint256 nonce, uint256 deadline, address presale) voucher, bytes signature) external payable",
+  "function buyWithTokenVoucher(address token, uint256 amount, address beneficiary, (address buyer, address beneficiary, address paymentToken, uint256 usdLimit, uint256 nonce, uint256 deadline, address presale) voucher, bytes signature) external"
 ];
 const TOKEN_PRICE_ABI = ["function getTokenPrice(address token) view returns (uint256 priceUSD,bool isActive,uint8 decimals)"];
 const SUPPLY_ABI = ["function totalTokensMinted() view returns (uint256)", "function maxTokensToMint() view returns (uint256)", "function canClaim() view returns (bool)", "function presaleRate() view returns (uint256)", "function gasBuffer() view returns (uint256)"];
