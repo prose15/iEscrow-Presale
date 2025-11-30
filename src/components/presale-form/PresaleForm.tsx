@@ -382,6 +382,7 @@ const PresaleForm = () => {
   // };
 
   const handleBuyTokens = async () => {
+    console.log("handleBuyTokens");
     if (!isConnected || !address) return alert("Please connect your wallet first");
     if (!amount || amount <= 0) return alert("Please enter a valid amount to purchase");
     if (!isVerified) return alert("Please complete verification first");
