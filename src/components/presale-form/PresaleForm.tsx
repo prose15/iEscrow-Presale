@@ -129,7 +129,8 @@ const PresaleForm = () => {
   const [escrowBalance, setEscrowBalance] = useState("0");
   const [refreshingEscrow, setRefreshingEscrow] = useState(false);
   const [tokenMetadata, setTokenMetadata] = useState<Record<string, TokenMetadata>>(() => buildFallbackMetadata());
-  const [totalPresaleSupply, setTotalPresaleSupply] = useState<number>(5000000000);
+  // const [totalPresaleSupply, setTotalPresaleSupply] = useState<number>(70000000);
+  const totalPresaleSupply = 70000000;
   const [tokensSold, setTokensSold] = useState<number>(0);
   const [canClaim, setCanClaim] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -303,18 +304,18 @@ const PresaleForm = () => {
       try {
         const provider = getRpcProvider();
         const presaleContract = new Contract(PRESALE_CONTRACT_ADDRESS, SUPPLY_ABI, provider);
-        const [maxTokens, mintedTokens, claimStatus, presaleRateRaw, gasBufferVal] = await Promise.all([
-          presaleContract.maxTokensToMint(),
+        const [mintedTokens, claimStatus, presaleRateRaw, gasBufferVal] = await Promise.all([
+          // presaleContract.maxTokensToMint(),
           presaleContract.totalTokensMinted(),
           presaleContract.canClaim(),
           presaleContract.presaleRate(),
           presaleContract.gasBuffer()
         ]);
-        const maxSupply = Number(formatUnits(maxTokens, 18));
+        // const maxSupply = Number(formatUnits(maxTokens, 18));
         const sold = Number(formatUnits(mintedTokens, 18));
         const tokensPerUsdValue = Number(formatUnits(presaleRateRaw, 18));
         const gasBufferFinal = Number(formatUnits(gasBufferVal, 18));
-        if (!Number.isNaN(maxSupply)) setTotalPresaleSupply(maxSupply);
+        // if (!Number.isNaN(maxSupply)) setTotalPresaleSupply(maxSupply);
         if (!Number.isNaN(sold)) setTokensSold(sold);
         setCanClaim(Boolean(claimStatus));
         setTokensPerUsd(tokensPerUsdValue > 0 ? tokensPerUsdValue : 0);
