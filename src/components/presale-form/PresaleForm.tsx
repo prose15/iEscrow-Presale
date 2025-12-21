@@ -134,8 +134,8 @@ const PresaleForm = () => {
   const [tokensSold, setTokensSold] = useState<number>(0);
   const [canClaim, setCanClaim] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [tokenUsdPrice, setTokenUsdPrice] = useState("0.015");
-  const [tokensPerUsd, setTokensPerUsd] = useState<number>(66.67); // Default fallback: 1/0.015 = 66.67 tokens per USD
+  const [tokenUsdPrice, setTokenUsdPrice] = useState("0.05");
+  const [tokensPerUsd, setTokensPerUsd] = useState<number>(66.67); // Default fallback: 1/0.05 = 66.67 tokens per USD
   const [gasBufferAmount, setGasBufferAmount] = useState<number>(0);
   // const [showCountryModal, setShowCountryModal] = useState(false);
   // const [selectedCountry, setSelectedCountry] = useState<'US' | 'Other'>('Other');
@@ -193,7 +193,7 @@ const PresaleForm = () => {
     const amount = parseFloat(amountInput || "0");
     const currencyUsd = selectedCurrencyData?.priceUsd || 0;
     
-    // Use tokensPerUsd from contract, or fallback to default (66.67 = 1/0.015)
+    // Use tokensPerUsd from contract, or fallback to default (66.67 = 1/0.05)
     const effectiveTokensPerUsd = tokensPerUsd > 0 ? tokensPerUsd : 66.67;
     
     // Calculate using tokensPerUsd directly for accuracy
@@ -319,9 +319,9 @@ const PresaleForm = () => {
         if (!Number.isNaN(sold)) setTokensSold(sold);
         setCanClaim(Boolean(claimStatus));
         setTokensPerUsd(tokensPerUsdValue > 0 ? tokensPerUsdValue : 0);
-        setTokenUsdPrice(tokensPerUsdValue > 0 ? (1 / tokensPerUsdValue).toFixed(3) : "0.015");
+        setTokenUsdPrice(tokensPerUsdValue > 0 ? (1 / tokensPerUsdValue).toFixed(3) : "0.05");
         setGasBufferAmount(gasBufferFinal);
-      } catch (err) { setTokenUsdPrice("0.015"); }
+      } catch (err) { setTokenUsdPrice("0.05"); }
     }
   }, []);
 
