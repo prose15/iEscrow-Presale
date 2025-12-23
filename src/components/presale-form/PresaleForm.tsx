@@ -319,7 +319,7 @@ const PresaleForm = () => {
         if (!Number.isNaN(sold)) setTokensSold(sold);
         setCanClaim(Boolean(claimStatus));
         setTokensPerUsd(tokensPerUsdValue > 0 ? tokensPerUsdValue : 0);
-        setTokenUsdPrice(tokensPerUsdValue > 0 ? (1 / tokensPerUsdValue).toFixed(3) : "0.05");
+        setTokenUsdPrice(tokensPerUsdValue > 0 ? (1 / tokensPerUsdValue).toFixed(2) : "0.05");
         setGasBufferAmount(gasBufferFinal);
       } catch (err) { setTokenUsdPrice("0.05"); }
     }
